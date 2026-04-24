@@ -29,6 +29,10 @@ const ACTION_LABELS: Dictionary = {
 
 const TEX_ATLAS: Texture2D = preload("res://assets/samibrick_texture_atlas_v1.png")
 const TEX_BUTTON_ATLAS: Texture2D = preload("res://assets/ui_button_ring_atlas_v1.png")
+var tex_space_bg: Texture2D
+var tex_fx_shield: Texture2D
+var tex_fx_rapid: Texture2D
+var tex_fx_split: Texture2D
 const ATLAS_BRICK_BLUE: Rect2 = Rect2(816, 8, 64, 24)
 const ATLAS_BRICK_RED: Rect2 = Rect2(608, 80, 64, 24)
 const ATLAS_SHIELD_SEGMENT_BLUE: Rect2 = Rect2(672, 8, 64, 18)
@@ -111,10 +115,15 @@ var ammo_empty_pulse := 0.0
 var ammo_empty_time := 0.0
 var ammo_empty_weapon := ""
 var fire_blocked_sound_cooldown := 0.0
+var ping_timer := 0.0
+var ping_seq := 0
+var pending_pings: Dictionary = {}
+var server_latency_ms := -1
 
 func _ready() -> void:
 	set_process(true)
 	ui_font = get_theme_default_font()
+	_load_effect_assets()
 	_setup_audio()
 	url_params = _resolve_url_params()
 	config_draft = _default_config()
@@ -134,6 +143,12 @@ func _ready() -> void:
 	if auto_connect and not lobby_menu_visible:
 		_connect_to_server()
 
+func _load_effect_assets() -> void:
+	tex_space_bg = load("res://assets/space_starfield.png")
+	tex_fx_shield = load("res://assets/fx_shield_ring.png")
+	tex_fx_rapid = load("res://assets/fx_rapid_trail.png")
+	tex_fx_split = load("res://assets/fx_split_ghost.png")
+
 func _process(delta: float) -> void:
 	_poll_socket()
 	_update_reconnect(delta)
@@ -141,6 +156,7 @@ func _process(delta: float) -> void:
 	_update_lobby_clipboard_paste(delta)
 	_update_ammo_empty_feedback(delta)
 	fire_blocked_sound_cooldown = maxf(0.0, fire_blocked_sound_cooldown - delta)
+	_update_server_ping(delta)
 	room_code_copied_time = maxf(0.0, room_code_copied_time - delta)
 	send_accumulator += delta
 	if send_accumulator >= SEND_RATE:
@@ -302,6 +318,8 @@ func _handle_packet(packet: String) -> void:
 			var message := str(data.get("message", ""))
 			_add_event(message)
 			_handle_event_sound(message)
+		"pong":
+			_handle_pong(data)
 		"error":
 			status_message = str(data.get("message", "Erreur serveur"))
 		_:
@@ -384,6 +402,25 @@ func _send_json(payload: Dictionary) -> void:
 	if socket.get_ready_state() != WebSocketPeer.STATE_OPEN:
 		return
 	socket.send_text(JSON.stringify(payload))
+
+func _update_server_ping(delta: float) -> void:
+	if socket.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		return
+	ping_timer -= delta
+	if ping_timer > 0.0:
+		return
+	ping_timer = 1.0
+	ping_seq += 1
+	pending_pings[ping_seq] = Time.get_ticks_msec()
+	_send_json({"type": "ping", "seq": ping_seq})
+
+func _handle_pong(data: Dictionary) -> void:
+	var seq := int(data.get("seq", -1))
+	if not pending_pings.has(seq):
+		return
+	var sent_ms := int(pending_pings.get(seq))
+	pending_pings.erase(seq)
+	server_latency_ms = max(0, Time.get_ticks_msec() - sent_ms)
 
 func _set_config_panel_open(open: bool) -> void:
 	if config_panel_open == open:
@@ -1143,13 +1180,14 @@ func _draw_virtual() -> void:
 		_draw_config_panel()
 
 func _draw_background() -> void:
-	draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.055, 0.07, 0.105, 1.0))
-	for i in range(0, int(WORLD_H), 64):
-		var alpha := 0.08 if i % 128 == 0 else 0.04
-		draw_line(Vector2(0, i), Vector2(WORLD_W, i), Color(1, 1, 1, alpha), 1.0)
-	for x in range(0, int(WORLD_W), 64):
-		var alpha := 0.05
-		draw_line(Vector2(x, 0), Vector2(x, WORLD_H), Color(1, 1, 1, alpha), 1.0)
+	if tex_space_bg:
+		draw_texture_rect(tex_space_bg, Rect2(0, 0, WORLD_W, WORLD_H), false, Color(1, 1, 1, 1))
+	else:
+		draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.02, 0.025, 0.045, 1.0))
+	for i in range(0, int(WORLD_H), 128):
+		draw_line(Vector2(0, i), Vector2(WORLD_W, i), Color(0.45, 0.85, 1.0, 0.035), 1.0)
+	for x in range(0, int(WORLD_W), 128):
+		draw_line(Vector2(x, 0), Vector2(x, WORLD_H), Color(0.45, 0.85, 1.0, 0.025), 1.0)
 	draw_rect(Rect2(14, 14, WORLD_W - 28, WORLD_H - 28), Color(1, 1, 1, 0.30), false, 4.0)
 	draw_line(Vector2(40, WORLD_H * 0.5), Vector2(WORLD_W - 40, WORLD_H * 0.5), Color(1, 1, 1, 0.22), 3.0)
 	draw_circle(Vector2(WORLD_W * 0.5, WORLD_H * 0.5), 72.0, Color(1, 1, 1, 0.035))
@@ -1436,8 +1474,9 @@ func _draw_status_overlay() -> void:
 
 func _draw_fps_overlay() -> void:
 	var font := ui_font
-	var fps_text := "FPS %d" % Engine.get_frames_per_second()
-	var rect := Rect2(10, 10, 92, 28)
+	var latency_text := "--" if server_latency_ms < 0 else str(server_latency_ms)
+	var fps_text := "FPS %d  %sms" % [Engine.get_frames_per_second(), latency_text]
+	var rect := Rect2(10, 10, 142, 28)
 	draw_rect(rect, Color(0, 0, 0, 0.58), true)
 	draw_rect(rect, Color(1, 1, 1, 0.18), false, 1.0)
 	draw_string(font, Vector2(rect.position.x + 9, rect.position.y + 20), fps_text, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 18, 15, Color(0.90, 1.0, 0.82, 0.96))
@@ -1467,20 +1506,21 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 	if rapid_time > 0.0:
 		for i in range(3):
 			var offset := sin(phase + float(i) * 1.7) * 6.0
-			var start := pos + Vector2(-44.0 + float(i) * 44.0 + offset, back * 12.0)
-			var stop := start + Vector2(0.0, back * 42.0)
-			draw_line(start, stop, Color(1.0, 0.86, 0.18, 0.72), 4.0)
-			draw_line(start + Vector2(0, back * 8.0), stop + Vector2(0, back * 8.0), Color(1.0, 1.0, 1.0, 0.28), 1.5)
+			var trail_center := pos + Vector2(-36.0 + float(i) * 36.0 + offset, back * 50.0)
+			var rect := Rect2(trail_center.x - 24.0, trail_center.y - 32.0, 48.0, 64.0)
+			if tex_fx_rapid:
+				draw_texture_rect(tex_fx_rapid, rect, false, Color(1, 1, 1, 0.65), false)
 	if split_time > 0.0:
-		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
-		var rotate_180 := not is_local
 		var ghost_alpha := 0.22 + 0.06 * sin(phase * 1.4)
-		_draw_atlas_region(ship_src, Rect2(pos.x - 74.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
-		_draw_atlas_region(ship_src, Rect2(pos.x - 42.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
+		if tex_fx_split:
+			draw_texture_rect(tex_fx_split, Rect2(pos.x - 82.0, pos.y - 32.0, 116.0, 64.0), false, Color(1, 1, 1, ghost_alpha), false)
+			draw_texture_rect(tex_fx_split, Rect2(pos.x - 34.0, pos.y - 32.0, 116.0, 64.0), false, Color(1, 1, 1, ghost_alpha), false)
 		var split_start := 205.0 if is_local else 25.0
 		var split_end := 335.0 if is_local else 155.0
 		draw_arc(pos, 70.0, deg_to_rad(split_start), deg_to_rad(split_end), 32, Color(0.68, 0.36, 1.0, 0.56), 4.0)
 	if shield_time > 0.0:
+		if tex_fx_shield:
+			draw_texture_rect(tex_fx_shield, Rect2(pos.x - 82.0, pos.y - 82.0, 164.0, 164.0), false, Color(1, 1, 1, 0.72), false)
 		var spin := phase if is_local else -phase
 		draw_arc(pos, 86.0, spin, spin + TAU * 0.72, 48, Color(0.24, 1.0, 0.56, 0.68), 5.0)
 		draw_arc(pos, 94.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)

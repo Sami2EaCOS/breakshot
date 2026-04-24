@@ -649,6 +649,11 @@ function handleMessage(ws, raw) {
   }
   if (!data || typeof data !== 'object') return;
 
+  if (data.type === 'ping') {
+    safeSend(ws, { type: 'pong', seq: data.seq || 0 });
+    return;
+  }
+
   if (data.type === 'createRoom') {
     if (!ws._brickDuelRoom) {
       const room = createRoom({ public: false, rules: rulesFromClientMessage(data) });
