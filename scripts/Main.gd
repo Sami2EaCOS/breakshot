@@ -760,6 +760,9 @@ func _handle_event_sound(message: String) -> void:
 func _handle_key_input(event: InputEventKey) -> bool:
 	var keycodes: Array[int] = [event.keycode, event.physical_keycode]
 	var unicode := int(event.unicode)
+	if keycodes.has(KEY_F5):
+		_reload_page()
+		return true
 	if keycodes.has(KEY_SPACE) or keycodes.has(KEY_ENTER) or keycodes.has(KEY_KP_ENTER):
 		_play_fire_blocked_sound_if_needed()
 		return false
@@ -780,6 +783,12 @@ func _handle_key_input(event: InputEventKey) -> bool:
 func _request_rematch() -> void:
 	_send_json({"type": "restart"})
 	status_message = "Revanche demandee"
+
+func _reload_page() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.location.reload()", false)
+	else:
+		_connect_to_server()
 
 func _play_fire_blocked_sound_if_needed() -> void:
 	if str(current_state.get("status", "")) != "playing":
@@ -1452,25 +1461,29 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 	var rapid_time := float(player.get("rapid", 0.0))
 	var split_time := float(player.get("split", 0.0))
 	var shield_time := float(player.get("shield", 0.0))
-	var dir := -1.0 if is_local else 1.0
+	var facing := -1.0 if is_local else 1.0
+	var back := -facing
 	var phase := Time.get_ticks_msec() * 0.006
 	if rapid_time > 0.0:
 		for i in range(3):
 			var offset := sin(phase + float(i) * 1.7) * 6.0
-			var start := pos + Vector2(-44.0 + float(i) * 44.0 + offset, -dir * 4.0)
-			var stop := start + Vector2(-dir * 0.0, dir * 42.0)
+			var start := pos + Vector2(-44.0 + float(i) * 44.0 + offset, back * 12.0)
+			var stop := start + Vector2(0.0, back * 42.0)
 			draw_line(start, stop, Color(1.0, 0.86, 0.18, 0.72), 4.0)
-			draw_line(start + Vector2(0, dir * 8.0), stop + Vector2(0, dir * 8.0), Color(1.0, 1.0, 1.0, 0.28), 1.5)
+			draw_line(start + Vector2(0, back * 8.0), stop + Vector2(0, back * 8.0), Color(1.0, 1.0, 1.0, 0.28), 1.5)
 	if split_time > 0.0:
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
 		var rotate_180 := not is_local
 		var ghost_alpha := 0.22 + 0.06 * sin(phase * 1.4)
 		_draw_atlas_region(ship_src, Rect2(pos.x - 74.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
 		_draw_atlas_region(ship_src, Rect2(pos.x - 42.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
-		draw_arc(pos, 70.0, deg_to_rad(205.0), deg_to_rad(335.0), 32, Color(0.68, 0.36, 1.0, 0.56), 4.0)
+		var split_start := 205.0 if is_local else 25.0
+		var split_end := 335.0 if is_local else 155.0
+		draw_arc(pos, 70.0, deg_to_rad(split_start), deg_to_rad(split_end), 32, Color(0.68, 0.36, 1.0, 0.56), 4.0)
 	if shield_time > 0.0:
-		draw_arc(pos, 86.0, phase, phase + TAU * 0.72, 48, Color(0.24, 1.0, 0.56, 0.68), 5.0)
-		draw_arc(pos, 94.0, -phase * 0.7, -phase * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)
+		var spin := phase if is_local else -phase
+		draw_arc(pos, 86.0, spin, spin + TAU * 0.72, 48, Color(0.24, 1.0, 0.56, 0.68), 5.0)
+		draw_arc(pos, 94.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)
 
 func _fit_transform() -> Dictionary:
 	var screen: Vector2 = get_viewport_rect().size
