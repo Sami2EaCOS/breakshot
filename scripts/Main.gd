@@ -10,21 +10,21 @@ const WORLD_SIZE: Vector2 = Vector2(WORLD_W, WORLD_H)
 const SEND_RATE: float = 1.0 / 30.0
 const SNAPSHOT_INTERPOLATION_DELAY: float = 0.04
 const MOVE_BAR_Y: float = 1028.0
-const WEAPON_ORDER: Array[String] = ["sniper", "minigun", "protection"]
+const WEAPON_ORDER: Array[String] = ["sniper"]
 const WEAPON_LABELS: Dictionary = {
-	"sniper": "Sniper",
-	"minigun": "Shotgun",
-	"protection": "Protection"
+	"sniper": "Sniper"
 }
 const WEAPON_AMMO_MAX: Dictionary = {
-	"sniper": 5,
-	"minigun": 1,
-	"protection": 2
+	"sniper": 5
 }
 const WEAPON_RELOAD_TIME: Dictionary = {
-	"sniper": 1.15,
-	"minigun": 5.0,
-	"protection": 5.0
+	"sniper": 0.8
+}
+const ACTION_ORDER: Array[String] = ["rapid", "shield", "split"]
+const ACTION_LABELS: Dictionary = {
+	"rapid": "Rapid",
+	"shield": "Shield",
+	"split": "Split"
 }
 
 const TEX_ATLAS: Texture2D = preload("res://assets/samibrick_texture_atlas_v1.png")
@@ -44,7 +44,7 @@ const ATLAS_BULLET_BLUE: Rect2 = Rect2(336, 152, 34, 12)
 const ATLAS_BULLET_RED: Rect2 = Rect2(670, 152, 34, 12)
 const ATLAS_HEAVY_BLUE: Rect2 = Rect2(378, 152, 44, 18)
 const ATLAS_HEAVY_RED: Rect2 = Rect2(712, 152, 44, 18)
-const ATLAS_POWER_AMMO: Rect2 = Rect2(182, 208, 36, 36)
+const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
 const UI_FIRE_IDLE: Rect2 = Rect2(8, 8, 176, 176)
@@ -93,8 +93,9 @@ var send_accumulator := 0.0
 var touch_target_x := -1.0
 var move_touches: Dictionary = {}
 var fire_touches: Dictionary = {}
-var weapon_touches: Dictionary = {}
+var action_touches: Dictionary = {}
 var pending_switch := ""
+var pending_action := ""
 var last_sent_fire := false
 var draw_fit_offset := Vector2.ZERO
 var draw_fit_scale := 1.0
@@ -411,9 +412,11 @@ func _send_input() -> void:
 		"move": axis,
 		"targetX": target_value,
 		"fire": fire,
-		"switch": pending_switch
+		"switch": pending_switch,
+		"action": pending_action
 	}
 	pending_switch = ""
+	pending_action = ""
 	last_sent_fire = fire
 	_send_json(payload)
 
@@ -751,7 +754,7 @@ func _update_sound_cues(data: Dictionary) -> void:
 
 func _handle_event_sound(message: String) -> void:
 	var lower := message.to_lower()
-	if lower.find("bonus") >= 0 or lower.find("recharge") >= 0 or lower.find("cooldown boost") >= 0:
+	if lower.find("bonus") >= 0 or lower.find("+1 ") >= 0 or lower.find("rapid active") >= 0 or lower.find("shield actif") >= 0 or lower.find("split tir") >= 0:
 		_play_sound("bonus")
 
 func _handle_key_input(event: InputEventKey) -> bool:
@@ -761,16 +764,13 @@ func _handle_key_input(event: InputEventKey) -> bool:
 		_play_fire_blocked_sound_if_needed()
 		return false
 	if keycodes.has(KEY_1) or keycodes.has(KEY_KP_1) or unicode == 49:
-		_request_switch("sniper")
+		_request_action("rapid")
 		return true
 	if keycodes.has(KEY_2) or keycodes.has(KEY_KP_2) or unicode == 50:
-		_request_switch("minigun")
+		_request_action("shield")
 		return true
 	if keycodes.has(KEY_3) or keycodes.has(KEY_KP_3) or unicode == 51:
-		_request_switch("protection")
-		return true
-	if keycodes.has(KEY_4) or keycodes.has(KEY_KP_4) or unicode == 52:
-		_request_switch("protection")
+		_request_action("split")
 		return true
 	if keycodes.has(KEY_R):
 		_request_rematch()
@@ -806,12 +806,12 @@ func _active_weapon_can_fire() -> bool:
 func _pointer_down(id, pos: Vector2) -> void:
 	if not _virtual_rect().has_point(pos):
 		return
-	var weapon := _weapon_at_pos(pos)
-	if weapon != "":
+	var action := _action_at_pos(pos)
+	if action != "":
 		if fire_touches.has(id):
 			fire_touches.erase(id)
-		weapon_touches[id] = weapon
-		_request_switch(weapon)
+		action_touches[id] = action
+		_request_action(action)
 		return
 	if not _is_move_zone(pos):
 		_play_fire_blocked_sound_if_needed()
@@ -823,22 +823,22 @@ func _pointer_down(id, pos: Vector2) -> void:
 	_send_input()
 
 func _pointer_move(id, pos: Vector2) -> void:
-	var weapon := _weapon_at_pos(pos)
-	if weapon != "":
+	var action := _action_at_pos(pos)
+	if action != "":
 		if move_touches.has(id):
 			move_touches.erase(id)
 			if move_touches.size() == 0:
 				touch_target_x = -1.0
 		if fire_touches.has(id):
 			fire_touches.erase(id)
-		if str(weapon_touches.get(id, "")) != weapon:
-			weapon_touches[id] = weapon
-			_request_switch(weapon)
+		if str(action_touches.get(id, "")) != action:
+			action_touches[id] = action
+			_request_action(action)
 		else:
 			_send_input()
 		return
-	if weapon_touches.has(id):
-		weapon_touches.erase(id)
+	if action_touches.has(id):
+		action_touches.erase(id)
 	if move_touches.has(id):
 		if _is_move_zone(pos):
 			touch_target_x = clampf(pos.x, 40.0, WORLD_W - 40.0)
@@ -866,8 +866,8 @@ func _pointer_up(id) -> void:
 	if fire_touches.has(id):
 		fire_touches.erase(id)
 		changed = true
-	if weapon_touches.has(id):
-		weapon_touches.erase(id)
+	if action_touches.has(id):
+		action_touches.erase(id)
 	if changed:
 		_send_input()
 
@@ -876,16 +876,15 @@ func _request_switch(weapon: String) -> void:
 		pending_switch = weapon
 		_send_input()
 
+func _request_action(action: String) -> void:
+	if ACTION_ORDER.has(action):
+		pending_action = action
+		_send_input()
+
 func _default_config() -> Dictionary:
 	return {
 		"sniperAmmo": 5,
-		"sniperReload": 1.15,
-		"minigunAmmo": 1,
-		"minigunPellets": 5,
-		"minigunCooldown": 5.0,
-		"minigunReload": 5.0,
-		"protectionAmmo": 2,
-		"protectionReload": 5.0,
+		"sniperReload": 0.8,
 		"ballRadius": 17,
 		"playerSpeed": 760
 	}
@@ -903,19 +902,9 @@ func _sync_config_from_rules() -> void:
 	var ball = room_rules.get("ball", {})
 	if typeof(weapons) == TYPE_DICTIONARY:
 		var sniper = weapons.get("sniper", {})
-		var minigun = weapons.get("minigun", {})
-		var protection = weapons.get("protection", {})
 		if typeof(sniper) == TYPE_DICTIONARY:
 			config_draft["sniperAmmo"] = sniper.get("ammo", config_draft.get("sniperAmmo", 5))
-			config_draft["sniperReload"] = sniper.get("reload", config_draft.get("sniperReload", 1.15))
-		if typeof(minigun) == TYPE_DICTIONARY:
-			config_draft["minigunAmmo"] = minigun.get("ammo", config_draft.get("minigunAmmo", 1))
-			config_draft["minigunPellets"] = minigun.get("pellets", config_draft.get("minigunPellets", 5))
-			config_draft["minigunCooldown"] = minigun.get("cooldown", config_draft.get("minigunCooldown", 5.0))
-			config_draft["minigunReload"] = minigun.get("reload", config_draft.get("minigunReload", 5.0))
-		if typeof(protection) == TYPE_DICTIONARY:
-			config_draft["protectionAmmo"] = protection.get("ammo", config_draft.get("protectionAmmo", 2))
-			config_draft["protectionReload"] = protection.get("reload", config_draft.get("protectionReload", 5.0))
+			config_draft["sniperReload"] = sniper.get("reload", config_draft.get("sniperReload", 0.8))
 	if typeof(ball) == TYPE_DICTIONARY:
 		config_draft["ballRadius"] = ball.get("radius", config_draft.get("ballRadius", 17))
 	if typeof(player) == TYPE_DICTIONARY:
@@ -923,18 +912,12 @@ func _sync_config_from_rules() -> void:
 
 func _rules_params_from_config() -> Dictionary:
 	var params := config_draft.duplicate(true)
-	params["minigunAmmo"] = 1
-	params["minigunCooldown"] = float(params.get("minigunReload", 5.0))
 	return params
 
 func _config_rows() -> Array:
 	return [
 		{"key": "sniperAmmo", "label": "Sniper balles", "step": 1.0, "min": 1.0, "max": 20.0, "decimals": 0},
 		{"key": "sniperReload", "label": "Sniper recharge", "step": 0.05, "min": 0.1, "max": 8.0, "decimals": 2},
-		{"key": "minigunPellets", "label": "Shotgun projectiles", "step": 1.0, "min": 1.0, "max": 12.0, "decimals": 0},
-		{"key": "minigunReload", "label": "Shotgun recharge", "step": 0.25, "min": 0.5, "max": 12.0, "decimals": 2},
-		{"key": "protectionAmmo", "label": "Protections", "step": 1.0, "min": 0.0, "max": 8.0, "decimals": 0},
-		{"key": "protectionReload", "label": "Protection recharge", "step": 0.25, "min": 0.25, "max": 15.0, "decimals": 2},
 		{"key": "ballRadius", "label": "Taille balle", "step": 1.0, "min": 5.0, "max": 42.0, "decimals": 0},
 		{"key": "playerSpeed", "label": "Vitesse joueur", "step": 40.0, "min": 260.0, "max": 1500.0, "decimals": 0}
 	]
@@ -1003,6 +986,13 @@ func _weapon_ammo_max(weapon: String) -> int:
 func _weapon_reload_time(weapon: String) -> float:
 	var rules := _weapon_rules(weapon)
 	return maxf(0.01, float(rules.get("reload", WEAPON_RELOAD_TIME.get(weapon, 1.0))))
+
+func _action_icon_source(action: String) -> Rect2:
+	if action == "shield":
+		return ATLAS_POWER_SHIELD
+	if action == "rapid":
+		return ATLAS_POWER_RAPID
+	return ATLAS_POWER_SPLIT
 
 func _add_event(message: String) -> void:
 	if message == "":
@@ -1160,7 +1150,7 @@ func _draw_lobby_menu() -> void:
 	var panel := _lobby_panel_rect()
 	draw_rect(panel, Color(0.025, 0.035, 0.05, 0.92), true)
 	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.24), false, 2.0)
-	_draw_centered_text("BRICK DUEL", Vector2(WORLD_W * 0.5, panel.position.y + 68.0), 54, Color(1, 1, 1, 1))
+	_draw_centered_text("BREAKSHOT", Vector2(WORLD_W * 0.5, panel.position.y + 68.0), 54, Color(1, 1, 1, 1))
 	_draw_centered_text("ROOMS", Vector2(WORLD_W * 0.5, panel.position.y + 116.0), 22, Color(0.72, 0.9, 1.0, 0.92))
 	_draw_menu_button(_lobby_create_rect(), "CREER UNE ROOM", Color(0.06, 0.42, 0.62, 0.92), true)
 	_draw_menu_button(_lobby_quick_rect(), "QUICK MATCH", Color(0.10, 0.34, 0.22, 0.92), true)
@@ -1173,9 +1163,9 @@ func _draw_lobby_menu() -> void:
 	_draw_menu_button(_lobby_join_paste_rect(), "COLLER", Color(0.10, 0.20, 0.28, 0.92), false)
 	_draw_menu_button(_lobby_join_rect(), "REJOINDRE", Color(0.48, 0.14, 0.34, 0.92), true)
 	_draw_menu_button(_lobby_config_rect(), "CONFIG", Color(0.16, 0.18, 0.25, 0.92), true)
-	var summary := "Sniper %s | Shotgun %s | Balle %s | Vitesse %s" % [
+	var summary := "Sniper %s | Recharge %ss | Balle %s | Vitesse %s" % [
 		_config_value_text({"key": "sniperAmmo", "decimals": 0}),
-		_config_value_text({"key": "minigunPellets", "decimals": 0}),
+		_config_value_text({"key": "sniperReload", "decimals": 2}),
 		_config_value_text({"key": "ballRadius", "decimals": 0}),
 		_config_value_text({"key": "playerSpeed", "decimals": 0})
 	]
@@ -1259,7 +1249,7 @@ func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> 
 
 func _draw_waiting_screen() -> void:
 	var font := ui_font
-	_draw_centered_text("BRICK DUEL", Vector2(WORLD_W * 0.5, 315), 54, Color(1, 1, 1, 1))
+	_draw_centered_text("BREAKSHOT", Vector2(WORLD_W * 0.5, 315), 54, Color(1, 1, 1, 1))
 	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 372), 22, Color(0.75, 0.85, 1.0, 1))
 	_draw_room_code_chip()
 	var box := Rect2(70, 465, WORLD_W - 140, 300)
@@ -1306,11 +1296,13 @@ func _draw_powerups() -> void:
 			continue
 		var pos := _world_to_local(Vector2(float(power.get("x", 0.0)), float(power.get("y", 0.0))))
 		var ptype := str(power.get("kind", "ammo"))
-		var source := ATLAS_POWER_AMMO
+		var source := _action_icon_source("split")
 		if ptype == "shield":
-			source = ATLAS_POWER_SHIELD
+			source = _action_icon_source("shield")
 		elif ptype == "rapid":
-			source = ATLAS_POWER_RAPID
+			source = _action_icon_source("rapid")
+		elif ptype == "split":
+			source = _action_icon_source("split")
 		var rect := Rect2(pos.x - 26.0, pos.y - 26.0, 52.0, 52.0)
 		_draw_atlas_region(source, rect, false, Color(1, 1, 1, 0.95))
 		var owner := int(power.get("owner", -1))
@@ -1328,13 +1320,9 @@ func _draw_projectiles() -> void:
 		var is_local := owner == my_role
 		var source := ATLAS_HEAVY_BLUE if is_local else ATLAS_HEAVY_RED
 		var rect := Rect2(pos.x - 26.0, pos.y - 11.0, 52.0, 22.0)
-		if ptype == "minigun" or ptype == "shotgun_shell":
-			source = ATLAS_BULLET_BLUE if is_local else ATLAS_BULLET_RED
-			rect = Rect2(pos.x - 28.0, pos.y - 10.0, 56.0, 20.0)
-		elif ptype == "shotgun_shrapnel":
-			source = ATLAS_BULLET_BLUE if is_local else ATLAS_BULLET_RED
-			rect = Rect2(pos.x - 18.0, pos.y - 6.0, 36.0, 12.0)
-		var angle := -PI * 0.5 if is_local else PI * 0.5
+		var vx := float(proj.get("vx", 0.0))
+		var vy := float(proj.get("vy", -1.0 if is_local else 1.0))
+		var angle := atan2(vy, vx)
 		_draw_atlas_region_rotated(source, rect, angle, Color(1, 1, 1, 0.98))
 
 func _draw_balls() -> void:
@@ -1379,7 +1367,6 @@ func _draw_players() -> void:
 			draw_circle(target, 8.0, Color(1, 1, 1, 0.35))
 
 func _draw_hud() -> void:
-	var font := ui_font
 	var player := _local_player()
 	var active := str(player.get("active", "sniper")) if not player.is_empty() else "sniper"
 	var ammo := int(player.get("ammo", 0)) if not player.is_empty() else 0
@@ -1387,34 +1374,24 @@ func _draw_hud() -> void:
 	var cooldown_max := float(player.get("cooldownMax", 1.0)) if not player.is_empty() else 1.0
 	var reserves: Dictionary = player.get("ammoReserve", {}) if not player.is_empty() else {}
 	var reloads: Dictionary = player.get("ammoReload", {}) if not player.is_empty() else {}
+	var action_stacks: Dictionary = player.get("actionStacks", {}) if not player.is_empty() else {}
 
-	for i in range(WEAPON_ORDER.size()):
-		var weapon: String = WEAPON_ORDER[i]
+	for i in range(ACTION_ORDER.size()):
+		var action: String = ACTION_ORDER[i]
 		var ring_rect := _weapon_ring_rect()
-		var is_active: bool = weapon == active
-		var max_ammo := _weapon_ammo_max(weapon)
-		var reserve := int(reserves.get(weapon, ammo if is_active else max_ammo))
-		var reload_remaining := float(reloads.get(weapon, 0.0))
-		var cooldown_remaining := cooldown if is_active else 0.0
-		var reload_total := _weapon_reload_time(weapon)
-		var button_src := _weapon_segment_source(i, is_active, reserve <= 0)
-		_draw_button_region(button_src, ring_rect, Color(1, 1, 1, 0.98))
-		var charge_remaining := 0.0
-		var charge_total := reload_total
-		if cooldown_remaining > 0.0:
-			charge_remaining = cooldown_remaining
-			charge_total = maxf(cooldown_max, 0.01)
-		elif reload_remaining > 0.0:
-			charge_remaining = reload_remaining
-			charge_total = reload_total
-		if charge_remaining > 0.0:
-			var charge_pct := 1.0 - clampf(charge_remaining / charge_total, 0.0, 1.0)
-			_draw_weapon_arc(i, UI_WEAPON_INNER_RADIUS + 12.0, charge_pct, Color(0.35, 0.62, 1.0, 0.55), 5.0)
-		var ammo_pct := clampf(float(reserve) / float(max_ammo), 0.0, 1.0)
-		_draw_weapon_arc(i, UI_WEAPON_OUTER_RADIUS - 8.0, ammo_pct, Color(0.18, 0.95, 0.45, 0.95), 5.0)
+		var stack := int(action_stacks.get(action, 0))
+		var active_time := _action_active_remaining(player, action)
+		var active_total := _action_active_total(player, action)
+		var is_ready := stack > 0 and active_time <= 0.0
+		var button_src := _weapon_segment_source(i, is_ready, false)
+		_draw_button_region(button_src, ring_rect, Color(1, 1, 1, 0.98 if is_ready else 0.72))
+		if active_time > 0.0 and active_total > 0.0:
+			var active_pct := clampf(active_time / active_total, 0.0, 1.0)
+			_draw_weapon_arc(i, UI_WEAPON_INNER_RADIUS + 10.0, active_pct, Color(0.35, 0.72, 1.0, 0.75), 7.0)
 		var label_pos := _weapon_segment_label_pos(i)
-		_draw_centered_text("%d" % (i + 1), label_pos + Vector2(0, -11), 17, Color(1, 1, 1, 0.76))
-		_draw_centered_text("%s" % _weapon_label(weapon), label_pos + Vector2(0, 10), 14, Color(1, 1, 1, 0.96))
+		var icon_rect := Rect2(label_pos.x - 25.0, label_pos.y - 25.0, 50.0, 50.0)
+		_draw_atlas_region(_action_icon_source(action), icon_rect, false, Color(1, 1, 1, 1.0 if is_ready or active_time > 0.0 else 0.48))
+		_draw_action_stack_icons(action, stack, label_pos)
 
 	var fire_rect := _fire_button_rect()
 	var firing := fire_touches.size() > 0 or Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER)
@@ -1424,6 +1401,10 @@ func _draw_hud() -> void:
 	if cooldown > 0.0:
 		var pct := clampf(cooldown / maxf(cooldown_max, 0.01), 0.0, 1.0)
 		draw_arc(fire_rect.get_center(), fire_rect.size.x * 0.5 + 9, -PI * 0.5, -PI * 0.5 + TAU * pct, 64, Color(1.0, 0.93, 0.28, 0.9), 6.0)
+	var sniper_max := _weapon_ammo_max(active)
+	var sniper_reserve := int(reserves.get(active, ammo))
+	var sniper_reload := float(reloads.get(active, 0.0))
+	_draw_ammo_bar(fire_rect, sniper_reserve, sniper_max, sniper_reload, _weapon_reload_time(active))
 
 func _draw_move_limit_bar() -> void:
 	draw_rect(Rect2(0, MOVE_BAR_Y, WORLD_W, WORLD_H - MOVE_BAR_Y), Color(0.06, 0.10, 0.13, 0.16), true)
@@ -1533,6 +1514,75 @@ func _draw_weapon_arc(index: int, radius: float, pct: float, color: Color, width
 	var end_angle := deg_to_rad(lerpf(angle_range.x, angle_range.y, clampf(pct, 0.0, 1.0)))
 	draw_arc(_fire_button_rect().get_center(), radius, start_angle, end_angle, 24, color, width)
 
+func _action_active_remaining(player: Dictionary, action: String) -> float:
+	if action == "rapid":
+		return float(player.get("rapid", 0.0))
+	if action == "shield":
+		return float(player.get("shield", 0.0))
+	if action == "split":
+		return float(player.get("split", 0.0))
+	return 0.0
+
+func _action_active_total(player: Dictionary, action: String) -> float:
+	if action == "rapid":
+		return maxf(0.01, float(player.get("rapidMax", 5.0)))
+	if action == "shield":
+		return maxf(0.01, float(player.get("shieldMax", 1.0)))
+	if action == "split":
+		return maxf(0.01, float(player.get("splitMax", 3.0)))
+	return 1.0
+
+func _draw_action_stack_icons(action: String, stack: int, center: Vector2) -> void:
+	if stack <= 0:
+		return
+	var icon := _action_icon_source(action)
+	var points := _stack_points(min(stack, 9))
+	var size := 13.0 if stack <= 4 else 11.0
+	for point in points:
+		var p := center + point + Vector2(0.0, 42.0)
+		_draw_atlas_region(icon, Rect2(p.x - size * 0.5, p.y - size * 0.5, size, size), false, Color(1, 1, 1, 0.92))
+
+func _stack_points(count: int) -> Array[Vector2]:
+	if count <= 1:
+		return [Vector2.ZERO]
+	if count == 2:
+		return [Vector2(-8, 0), Vector2(8, 0)]
+	if count == 3:
+		return [Vector2(0, -8), Vector2(-9, 7), Vector2(9, 7)]
+	if count == 4:
+		return [Vector2(-8, -8), Vector2(8, -8), Vector2(-8, 8), Vector2(8, 8)]
+	var cols: int = 3
+	var rows: int = int(ceil(float(count) / float(cols)))
+	var output: Array[Vector2] = []
+	for i in range(count):
+		var col: int = i % cols
+		var row: int = int(i / cols)
+		output.append(Vector2((float(col) - 1.0) * 12.0, (float(row) - float(rows - 1) * 0.5) * 12.0))
+	return output
+
+func _draw_ammo_bar(fire_rect: Rect2, reserve: int, max_ammo: int, reload_remaining: float, reload_total: float) -> void:
+	var cells: int = maxi(1, max_ammo)
+	var bar: Rect2 = Rect2(fire_rect.position.x + fire_rect.size.x + 16.0, fire_rect.position.y + 10.0, 30.0, fire_rect.size.y - 20.0)
+	draw_rect(bar.grow(4.0), Color(0.0, 0.0, 0.0, 0.42), true)
+	draw_rect(bar.grow(4.0), Color(1, 1, 1, 0.18), false, 2.0)
+	var gap: float = 4.0
+	var cell_h: float = (bar.size.y - gap * float(cells - 1)) / float(cells)
+	var reload_pct: float = 0.0
+	if reload_remaining > 0.0:
+		reload_pct = 1.0 - clampf(reload_remaining / maxf(reload_total, 0.01), 0.0, 1.0)
+	for i in range(cells):
+		var slot: int = cells - 1 - i
+		var y: float = bar.position.y + float(slot) * (cell_h + gap)
+		var rect: Rect2 = Rect2(bar.position.x, y, bar.size.x, cell_h)
+		draw_rect(rect, Color(0.04, 0.07, 0.09, 0.74), true)
+		draw_rect(rect, Color(1, 1, 1, 0.22), false, 1.0)
+		if i < reserve:
+			draw_rect(rect.grow(-3.0), Color(0.30, 0.80, 1.0, 0.94), true)
+		elif i == reserve and reserve < cells and reload_pct > 0.0:
+			var fill_h: float = maxf(0.0, (rect.size.y - 6.0) * reload_pct)
+			var fill: Rect2 = Rect2(rect.position.x + 3.0, rect.position.y + rect.size.y - 3.0 - fill_h, rect.size.x - 6.0, fill_h)
+			draw_rect(fill, Color(0.30, 0.80, 1.0, 0.72), true)
+
 func _lobby_panel_rect() -> Rect2:
 	return Rect2(64.0, 180.0, WORLD_W - 128.0, 820.0)
 
@@ -1598,16 +1648,16 @@ func _config_close_rect() -> Rect2:
 func _fire_button_rect() -> Rect2:
 	return Rect2(18.0, WORLD_H * 0.5 - 74.0, 148.0, 148.0)
 
-func _weapon_at_pos(pos: Vector2) -> String:
+func _action_at_pos(pos: Vector2) -> String:
 	var delta := pos - _fire_button_rect().get_center()
 	var distance := delta.length()
 	if distance < UI_WEAPON_INNER_RADIUS or distance > UI_WEAPON_OUTER_RADIUS:
 		return ""
 	var angle := rad_to_deg(atan2(delta.y, delta.x))
-	for i in range(WEAPON_ORDER.size()):
+	for i in range(ACTION_ORDER.size()):
 		var angle_range := _weapon_angle_range(i)
 		if angle >= angle_range.x and angle <= angle_range.y:
-			return WEAPON_ORDER[i]
+			return ACTION_ORDER[i]
 	return ""
 
 func _local_player() -> Dictionary:

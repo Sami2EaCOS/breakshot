@@ -1,0 +1,124 @@
+name: Deploy Breakshot
+
+on:
+  push:
+    branches:
+      - "**"
+
+concurrency:
+  group: breakshot-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.6.2
+      GODOT_RELEASE: stable
+      GODOT_TEMPLATE_DIR: 4.6.2.stable
+      PROD_PORT: ${{ secrets.PROD_PORT || '8787' }}
+      DEV_PORT: ${{ secrets.DEV_PORT || '8788' }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
+      - name: Install Godot and export templates
+        run: |
+          set -euo pipefail
+          GODOT_BASE="Godot_v${GODOT_VERSION}-${GODOT_RELEASE}"
+          curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_linux.x86_64.zip" -o godot.zip
+          unzip -q godot.zip
+          sudo mv "${GODOT_BASE}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+
+          curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_export_templates.tpz" -o templates.tpz
+          mkdir -p "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_DIR}"
+          unzip -q -j templates.tpz "templates/*" -d "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_DIR}"
+          godot --version
+
+      - name: Validate server
+        run: node --check server/index.js
+
+      - name: Export Web
+        run: |
+          rm -rf web_export
+          mkdir -p web_export
+          godot --headless --path . --export-release Web web_export/index.html
+
+      - name: Select deployment target
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "DEPLOY_ENV=prod" >> "$GITHUB_ENV"
+            echo "HOST_PORT=${PROD_PORT}" >> "$GITHUB_ENV"
+            echo "CONTAINER_NAME=breakshot-prod" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=breakshot:prod" >> "$GITHUB_ENV"
+            echo "REMOTE_SUBDIR=breakshot-prod" >> "$GITHUB_ENV"
+          else
+            echo "DEPLOY_ENV=dev" >> "$GITHUB_ENV"
+            echo "HOST_PORT=${DEV_PORT}" >> "$GITHUB_ENV"
+            echo "CONTAINER_NAME=breakshot-dev" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=breakshot:dev" >> "$GITHUB_ENV"
+            echo "REMOTE_SUBDIR=breakshot-dev" >> "$GITHUB_ENV"
+          fi
+
+      - name: Package deploy bundle
+        run: |
+          tar -czf breakshot-deploy.tgz Dockerfile .dockerignore server web_export README.md project.godot assets
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "${SSH_PRIVATE_KEY}"
+          test -n "${SSH_HOST}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${SSH_PORT}" "${SSH_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Deploy Docker container
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_BASE_DIR: ${{ secrets.DEPLOY_BASE_DIR }}
+        run: |
+          set -euo pipefail
+          test -n "${SSH_HOST}"
+          test -n "${SSH_USER}"
+
+          REMOTE_TAR="/tmp/breakshot-${DEPLOY_ENV}-${GITHUB_SHA}.tgz"
+          scp -i ~/.ssh/id_deploy -P "${SSH_PORT}" breakshot-deploy.tgz "${SSH_USER}@${SSH_HOST}:${REMOTE_TAR}"
+
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" \
+            "DEPLOY_BASE_DIR='${DEPLOY_BASE_DIR}' REMOTE_SUBDIR='${REMOTE_SUBDIR}' REMOTE_TAR='${REMOTE_TAR}' CONTAINER_NAME='${CONTAINER_NAME}' IMAGE_TAG='${IMAGE_TAG}' HOST_PORT='${HOST_PORT}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          BASE_DIR="${DEPLOY_BASE_DIR:-$HOME/godot}"
+          REMOTE_DIR="${BASE_DIR}/${REMOTE_SUBDIR}"
+
+          mkdir -p "${REMOTE_DIR}"
+          tar -xzf "${REMOTE_TAR}" -C "${REMOTE_DIR}"
+          rm -f "${REMOTE_TAR}"
+
+          cd "${REMOTE_DIR}"
+          docker build -t "${IMAGE_TAG}" .
+          docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+          docker run -d \
+            --restart unless-stopped \
+            --name "${CONTAINER_NAME}" \
+            -e PORT=8787 \
+            -e STATIC_ROOT=/app/web_export \
+            -p "127.0.0.1:${HOST_PORT}:8787" \
+            "${IMAGE_TAG}"
+
+          docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+REMOTE

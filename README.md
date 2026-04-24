@@ -1,127 +1,92 @@
-# Brick Duel One-Shot — MVP Godot Web 1v1
+# Breakshot
 
-Prototype jouable du concept : duel 1v1 type Pong / casse-briques / tirs de projectiles.
+Prototype Godot Web 1v1 : duel vertical entre Pong, casse-briques et tirs de projectiles.
 
-## Contenu du zip
+## Contenu
 
-- `project.godot` : projet Godot 4.x.
-- `scenes/Main.tscn` : scène principale.
-- `scripts/Main.gd` : client Godot, rendu, inputs clavier/tactile, WebSocket.
-- `assets/placeholders/` : placeholders PNG remplaçables.
-- `server/index.js` : serveur Node.js WebSocket autoritaire + serveur statique pour l'export web.
-- `export_presets.cfg` : preset Web pointant vers `web_export/index.html`.
+- `project.godot` : projet Godot 4.6.x.
+- `scenes/Main.tscn` : scene principale.
+- `scripts/Main.gd` : client Godot, rendu, inputs tactile/clavier, WebSocket.
+- `server/index.js` : serveur Node.js autoritaire + serveur statique pour l'export Web.
+- `web_export/` : build Web generee par Godot.
+- `Dockerfile` : image de production qui sert `web_export/` via le serveur Node.
+- `.github/workflows/deploy.yml` : CI/CD GitHub Actions.
 
-## Gameplay implémenté
-
-- 1v1 temps réel via WebSocket.
-- Chaque joueur se voit toujours en bas ; l'adversaire est affiché en haut.
-- Arène verticale mobile-first en 720 × 1280.
-- Balle commune synchronisée par le serveur.
-- Canons/paddles contrôlables horizontalement.
-- Tirs qui modifient la trajectoire de la balle.
-- Collisions balle/briques + destruction.
-- Mini balle capable de casser les briques adverses.
-- Protection des briques pendant 1 seconde.
-- Cooldowns, munitions et perte des munitions restantes quand on quitte un actif.
-- Power-ups générés lors de la destruction d'une brique, destinés au propriétaire du mur cassé.
-- Victoire : un joueur perd quand toutes ses briques sont détruites.
-
-## Lancer en local depuis Godot
-
-Prérequis : Node.js + Godot 4.x.
+## Lancer en local
 
 ```bash
 cd server
-npm install
-npm start
+npm ci
+PORT=8792 STATIC_ROOT=../web_export npm start
 ```
 
-Puis ouvrez le projet dans Godot et lancez deux instances du jeu, ou lancez une instance Godot + un export web.
-
-Par défaut, le client se connecte à :
+Puis ouvrir :
 
 ```text
-ws://localhost:8787
+http://127.0.0.1:8792
 ```
 
-## Export web
+Le client Web construit automatiquement son URL WebSocket depuis l'origine de la page.
 
-1. Ouvrir le projet dans Godot.
-2. Installer les templates d'export Web si nécessaire.
-3. Aller dans **Project > Export**.
-4. Sélectionner le preset **Web**.
-5. Exporter vers :
-
-```text
-web_export/index.html
-```
-
-6. Lancer le serveur :
+## Export Web
 
 ```bash
-cd server
-npm start
+godot --headless --path . --export-release Web web_export/index.html
 ```
 
-7. Ouvrir :
+## Docker
 
-```text
-http://localhost:8787
+Build :
+
+```bash
+docker build -t breakshot:local .
 ```
 
-Le client web construit automatiquement son URL WebSocket à partir de l'origine de la page : `ws://host:port` ou `wss://host` si la page est servie en HTTPS.
+Run local :
 
-## Contrôles
-
-### Mobile / tactile
-
-- Glisser dans l'arène : déplacer le canon horizontalement.
-- Bouton **TIR** : tirer avec l'actif équipé.
-- Boutons d'actifs en bas : changer d'actif.
-
-### Clavier
-
-- `A/D` ou `←/→` : déplacement.
-- `Espace` ou `Entrée` : tir.
-- `1` : Sniper.
-- `2` : Mini balle.
-- `3` : Mini gun.
-- `4` : Protection.
-- `R` : demander une revanche / reset de manche.
-
-## Actifs
-
-| Actif | Rôle | Munitions | Cooldown serveur |
-|---|---|---:|---:|
-| Sniper | Tir précis, impact fort sur la balle | 6 | 0,72 s |
-| Mini balle | Projectile qui impacte la balle et casse les briques adverses | 5 | 0,86 s |
-| Mini gun | Rafale rapide, impacts faibles mais fréquents | 24 | 0,13 s |
-| Protection | Rend les briques du joueur invincibles pendant 1 seconde | 2 | 6 s |
-
-Règle appliquée : quand un joueur change d'actif, les munitions restantes de l'actif quitté sont perdues. Les autres actifs gardent leur réserve jusqu'à ce qu'ils soient équipés ou abandonnés.
-
-## Power-ups
-
-Les power-ups apparaissent avec une chance de 36 % quand une brique est détruite. Ils se déplacent vers le joueur propriétaire du mur cassé.
-
-Types actuellement implémentés :
-
-- `ammo` : recharge l'actif actuellement équipé.
-- `shield` : ajoute 1 seconde de protection.
-- `rapid` : réduit temporairement les cooldowns de tir pendant 5 secondes.
-
-## Remplacer les assets
-
-Les placeholders sont dans :
-
-```text
-assets/placeholders/
+```bash
+docker run --rm -p 127.0.0.1:8792:8787 breakshot:local
 ```
 
-Pour remplacer vite : gardez les mêmes noms de fichiers PNG et rouvrez le projet dans Godot. Le code redimensionne les textures dans les rectangles de gameplay.
+Le serveur ecoute dans le conteneur sur `PORT=8787` et sert les fichiers statiques depuis `/app/web_export`.
 
-## Notes de production
+## Deploiement GitHub Actions
 
-Ce MVP est volontairement simple : le serveur est autoritaire sur les collisions, la balle, les projectiles, les briques, les power-ups et la victoire. Il n'inclut pas encore de système d'authentification, de lobby avancé, de matchmaking classé, de rollback/prediction réseau, ni d'anti-triche avancé.
+La CI se declenche a chaque push :
 
-Pour une mise en ligne HTTPS, placez le serveur derrière un reverse proxy et utilisez `wss://`. Le client bascule automatiquement vers `wss://` si la page Godot est servie en HTTPS.
+- push sur `main` : deploiement production sur le port `8787`, conteneur `breakshot-prod`;
+- push sur une autre branche : deploiement dev sur le port `8788`, conteneur `breakshot-dev`.
+
+Secrets GitHub requis :
+
+| Secret | Exemple | Role |
+|---|---|---|
+| `SSH_HOST` | `example.com` | hote SSH du serveur |
+| `SSH_USER` | `sami` | utilisateur SSH |
+| `SSH_PRIVATE_KEY` | cle privee OpenSSH | cle de deploiement |
+
+Secrets optionnels :
+
+| Secret | Defaut | Role |
+|---|---:|---|
+| `SSH_PORT` | `22` | port SSH |
+| `DEPLOY_BASE_DIR` | `$HOME/godot` | dossier parent distant |
+| `PROD_PORT` | `8787` | port local prod pour le reverse proxy |
+| `DEV_PORT` | `8788` | port local dev pour le reverse proxy |
+
+Le deploiement copie un tarball sur le serveur, build l'image Docker sur la machine distante, puis remplace le conteneur cible. Les ports sont bindes sur `127.0.0.1` pour etre consommes par le reverse proxy.
+
+## Gameplay actuel
+
+- Sniper comme tir principal.
+- Munitions rechargees balle par balle.
+- Maintien du bouton tir avec cadence, clics repetes instantanes si une balle est disponible.
+- Power-ups caches dans les briques puis reveles a la destruction.
+- Actions stockables : `rapid`, `shield`, `split`.
+- `rapid` accelere temporairement la recharge.
+- `shield` protege temporairement les briques.
+- `split` transforme temporairement les tirs sniper en triple tir.
+
+## Production
+
+Le serveur est autoritaire sur les rooms, collisions, balles, projectiles, briques, power-ups et victoire. Pour HTTPS/WSS, placer le conteneur derriere un reverse proxy.

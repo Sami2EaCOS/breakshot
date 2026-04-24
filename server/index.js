@@ -30,6 +30,7 @@ const BALL_MIN_SPEED = 390;
 const BALL_MAX_SPEED = 920;
 const POWERUP_CHANCE = 0.36;
 const POWERUP_SPEED = 165;
+const HOLD_FIRE_INTERVAL = 0.22;
 
 const BRICK_COLS = 7;
 const BRICK_ROWS = 4;
@@ -43,12 +44,11 @@ const WALL_Y = {
 };
 
 const WEAPONS = {
-  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 1.15, speed: 1120, radius: 9, impact: 1.15, semi: true },
-  minigun: { label: 'Shotgun', ammo: 1, cooldown: 5.0, reload: 5.0, speed: 1250, radius: 8, impact: 0.23, pellets: 5, spread: 0.18, semi: true },
-  protection: { label: 'Protection', ammo: 2, cooldown: 6.0, reload: 5.0, duration: 1.0 }
+  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 1120, radius: 9, impact: 1.15, semi: false }
 };
 const WEAPON_ORDER = Object.keys(WEAPONS);
-const POWER_KINDS = ['ammo', 'shield', 'rapid'];
+const POWER_KINDS = ['shield', 'rapid', 'split'];
+const ACTION_KINDS = ['rapid', 'shield', 'split'];
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 5;
 
@@ -63,6 +63,15 @@ function clamp(v, min, max) {
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
+}
+
+function shuffleArray(values) {
+  const output = values.slice();
+  for (let i = output.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [output[i], output[j]] = [output[j], output[i]];
+  }
+  return output;
 }
 
 function cleanNumber(value, fallback, min, max) {
@@ -108,6 +117,7 @@ function cloneDefaultRules() {
       speed: POWERUP_SPEED,
       shieldDuration: 1.0,
       rapidDuration: 5.0,
+      splitDuration: 3.0,
       rapidCooldownMultiplier: 0.65
     },
     weapons: Object.fromEntries(WEAPON_ORDER.map((name) => [name, { ...WEAPONS[name] }]))
@@ -184,6 +194,7 @@ function rulesFromParams(params) {
   copyParamNumber(cleanParams, powerups, 'speed', ['powerupSpeed']);
   copyParamNumber(cleanParams, powerups, 'shieldDuration', ['bonusShieldDuration']);
   copyParamNumber(cleanParams, powerups, 'rapidDuration', ['rapidDuration']);
+  copyParamNumber(cleanParams, powerups, 'splitDuration', ['splitDuration']);
   copyParamNumber(cleanParams, powerups, 'rapidCooldownMultiplier', ['rapidMultiplier']);
   if (Object.keys(powerups).length > 0) overrides.powerups = powerups;
 
@@ -228,6 +239,7 @@ function sanitizeRules(input = {}) {
   rules.powerups.speed = cleanNumber(powerups.speed, defaults.powerups.speed, 0, 520);
   rules.powerups.shieldDuration = cleanNumber(powerups.shieldDuration, defaults.powerups.shieldDuration, 0.1, 12);
   rules.powerups.rapidDuration = cleanNumber(powerups.rapidDuration, defaults.powerups.rapidDuration, 0.1, 18);
+  rules.powerups.splitDuration = cleanNumber(powerups.splitDuration, defaults.powerups.splitDuration, 0.1, 12);
   rules.powerups.rapidCooldownMultiplier = cleanNumber(powerups.rapidCooldownMultiplier, defaults.powerups.rapidCooldownMultiplier, 0.05, 1.5);
 
   for (const weaponName of WEAPON_ORDER) {
@@ -364,6 +376,7 @@ function createPlayer(role, name = 'Player', rules = cloneDefaultRules()) {
     fire: false,
     fireDown: false,
     firePressed: false,
+    holdRepeatAt: 0,
     queuedSwitch: '',
     active: 'sniper',
     ammoReserve,
@@ -372,17 +385,34 @@ function createPlayer(role, name = 'Player', rules = cloneDefaultRules()) {
     nextShotAt: 0,
     protectedUntil: 0,
     rapidUntil: 0,
+    splitUntil: 0,
+    actionStacks: Object.fromEntries(ACTION_KINDS.map((kind) => [kind, 0])),
     aiNextFireAt: 0,
     aiDecisionAt: 0
   };
 }
 
-function createBricks() {
+function createPowerupBag(rules = cloneDefaultRules()) {
+  const brickCount = BRICK_COLS * BRICK_ROWS;
+  const powerupCount = cleanInt(brickCount * (rules.powerups ? rules.powerups.chance : POWERUP_CHANCE), 0, 0, brickCount);
+  const bag = [];
+  for (let i = 0; i < powerupCount; i++) {
+    bag.push(POWER_KINDS[i % POWER_KINDS.length]);
+  }
+  return shuffleArray(bag);
+}
+
+function createBricks(rules = cloneDefaultRules()) {
   const bricks = [];
+  const basePowerups = createPowerupBag(rules);
   for (const owner of [1, 0]) {
     const startY = WALL_Y[owner];
+    const positions = shuffleArray(Array.from({ length: BRICK_COLS * BRICK_ROWS }, (_, i) => i));
+    const assignedPowerups = new Map();
+    for (let i = 0; i < basePowerups.length; i++) assignedPowerups.set(positions[i], basePowerups[i]);
     for (let row = 0; row < BRICK_ROWS; row++) {
       for (let col = 0; col < BRICK_COLS; col++) {
+        const index = row * BRICK_COLS + col;
         bricks.push({
           id: nextObjectId++,
           owner,
@@ -390,7 +420,8 @@ function createBricks() {
           y: startY + row * (BRICK_H + BRICK_GAP),
           w: BRICK_W,
           h: BRICK_H,
-          alive: true
+          alive: true,
+          powerupKind: assignedPowerups.get(index) || ''
         });
       }
     }
@@ -430,7 +461,7 @@ function createRoom(options = {}) {
     countdownRemaining: 0,
     time: 0,
     balls: [createBall(rules)],
-    bricks: createBricks(),
+    bricks: createBricks(rules),
     projectiles: [],
     powerups: [],
     events: []
@@ -465,7 +496,7 @@ function resetRoom(room, status = null) {
   room.countdownRemaining = room.status === 'countdown' ? ROOM_COUNTDOWN_SECONDS : 0;
   room.time = 0;
   room.balls = [createBall(room.rules)];
-  room.bricks = createBricks();
+  room.bricks = createBricks(room.rules);
   room.projectiles = [];
   room.powerups = [];
   room.events = [];
@@ -677,10 +708,14 @@ function handleMessage(ws, raw) {
     player.targetX = typeof tx === 'number' && Number.isFinite(tx) ? clamp(tx, 45, W - 45) : null;
     const fireDown = Boolean(data.fire);
     player.firePressed = player.firePressed || (fireDown && !player.fireDown);
+    if (fireDown && !player.fireDown) player.holdRepeatAt = room.time + HOLD_FIRE_INTERVAL;
     player.fireDown = fireDown;
     player.fire = fireDown;
     if (typeof data.switch === 'string' && roomWeapon(room, data.switch)) {
       player.queuedSwitch = data.switch;
+    }
+    if (typeof data.action === 'string' && room.status === 'playing') {
+      activateAction(room, player, data.action);
     }
   } else if (data.type === 'configState') {
     room.configOpen[role] = Boolean(data.open);
@@ -718,96 +753,38 @@ function beginAmmoReload(player, weaponName, room) {
   const weapon = roomWeapon(room, weaponName);
   if (!weapon) return;
   if ((player.ammoReserve[weaponName] || 0) < weapon.ammo) {
-    player.ammoReloadAt[weaponName] = room.time + weapon.reload;
+    player.ammoReloadAt[weaponName] = room.time + reloadTimeFor(player, weaponName, room);
   } else {
     player.ammoReloadAt[weaponName] = 0;
   }
+}
+
+function reloadTimeFor(player, weaponName, room) {
+  const weapon = roomWeapon(room, weaponName);
+  if (!weapon) return 0;
+  const rapid = player.rapidUntil > room.time ? 0.5 : 1.0;
+  return weapon.reload * rapid;
 }
 
 function spawnProjectile(room, player) {
   const weapon = roomWeapon(room, player.active);
   if (!weapon) return;
   const direction = player.role === 0 ? -1 : 1;
-  if (player.active === 'minigun') {
+  const angles = player.splitUntil > room.time ? [-0.22, 0, 0.22] : [0];
+  for (const angle of angles) {
     room.projectiles.push({
       id: nextObjectId++,
       owner: player.role,
-      kind: 'shotgun_shell',
+      kind: angle === 0 ? player.active : `${player.active}_split`,
       x: player.x,
       y: player.y + direction * 46,
-      vx: 0,
-      vy: direction * weapon.speed,
-      r: weapon.radius,
-      impact: weapon.impact,
-      pellets: cleanInt(weapon.pellets, 5, 1, 16),
-      spread: cleanNumber(weapon.spread, 0.18, 0, 1.2),
-      ttl: 1.15
-    });
-    return;
-  }
-  let vx = 0;
-  const projectile = {
-    id: nextObjectId++,
-    owner: player.role,
-    kind: player.active,
-    x: player.x,
-    y: player.y + direction * 46,
-    vx,
-    vy: direction * weapon.speed,
-    r: weapon.radius,
-    impact: weapon.impact,
-    ttl: 1.55
-  };
-  room.projectiles.push(projectile);
-}
-
-function shotgunExplosionLine(owner) {
-  return WALL_Y[owner];
-}
-
-function shouldExplodeShotgunShell(projectile) {
-  if (projectile.kind !== 'shotgun_shell') return false;
-  const lineY = shotgunExplosionLine(projectile.owner);
-  if (projectile.owner === 0) return projectile.y <= lineY;
-  return projectile.y >= lineY;
-}
-
-function explodeShotgunShell(room, projectile) {
-  const weapon = roomWeapon(room, 'minigun');
-  if (!weapon) return;
-  const direction = projectile.owner === 0 ? -1 : 1;
-  const pellets = cleanInt(projectile.pellets, weapon.pellets || 5, 1, 16);
-  const spread = cleanNumber(projectile.spread, weapon.spread || 0.18, 0, 1.2);
-  for (let i = 0; i < pellets; i++) {
-    const t = pellets === 1 ? 0.5 : i / (pellets - 1);
-    const angle = (t - 0.5) * spread * 2 + rand(-0.025, 0.025);
-    room.projectiles.push({
-      id: nextObjectId++,
-      owner: projectile.owner,
-      kind: 'shotgun_shrapnel',
-      x: projectile.x,
-      y: projectile.y,
       vx: Math.sin(angle) * weapon.speed,
       vy: direction * Math.cos(angle) * weapon.speed,
-      r: Math.max(4, weapon.radius * 0.72),
+      r: weapon.radius,
       impact: weapon.impact,
-      ttl: 0.68
+      ttl: 1.55
     });
   }
-}
-
-function activateProtection(room, player) {
-  if (room.time < player.nextShotAt) return false;
-  if (player.ammo <= 0) return false;
-  const weapon = roomWeapon(room, 'protection');
-  if (!weapon) return false;
-  player.protectedUntil = Math.max(player.protectedUntil, room.time + weapon.duration);
-  player.ammo -= 1;
-  player.ammoReserve.protection = player.ammo;
-  beginAmmoReload(player, 'protection', room);
-  player.nextShotAt = room.time + cooldownFor(player, room);
-  addEvent(room, `${player.name}: protection 1s`);
-  return true;
 }
 
 function fireActive(room, player) {
@@ -815,16 +792,34 @@ function fireActive(room, player) {
   if (player.ammo <= 0) return;
   const weapon = roomWeapon(room, player.active);
   if (!weapon) return;
-  if (player.active === 'protection') {
-    activateProtection(room, player);
-    return;
-  } else {
-    spawnProjectile(room, player);
-  }
+  spawnProjectile(room, player);
   player.ammo -= 1;
   player.ammoReserve[player.active] = player.ammo;
   beginAmmoReload(player, player.active, room);
   player.nextShotAt = room.time + cooldownFor(player, room);
+}
+
+function activateAction(room, player, action) {
+  if (!ACTION_KINDS.includes(action)) return false;
+  if ((player.actionStacks[action] || 0) <= 0) return false;
+  if (action === 'rapid' && player.rapidUntil > room.time) return false;
+  if (action === 'shield' && player.protectedUntil > room.time) return false;
+  if (action === 'split' && player.splitUntil > room.time) return false;
+  player.actionStacks[action] -= 1;
+  if (action === 'rapid') {
+    player.rapidUntil = Math.max(player.rapidUntil, room.time + room.rules.powerups.rapidDuration);
+    if ((player.ammoReloadAt.sniper || 0) > room.time) {
+      player.ammoReloadAt.sniper = room.time + Math.min(player.ammoReloadAt.sniper - room.time, reloadTimeFor(player, 'sniper', room));
+    }
+    addEvent(room, `${player.name}: rapid active`);
+  } else if (action === 'shield') {
+    player.protectedUntil = Math.max(player.protectedUntil, room.time + room.rules.powerups.shieldDuration);
+    addEvent(room, `${player.name}: shield actif`);
+  } else if (action === 'split') {
+    player.splitUntil = Math.max(player.splitUntil, room.time + room.rules.powerups.splitDuration);
+    addEvent(room, `${player.name}: split actif`);
+  }
+  return true;
 }
 
 function updateAmmoReloads(room) {
@@ -836,10 +831,15 @@ function updateAmmoReloads(room) {
         continue;
       }
       if ((player.ammoReloadAt[weaponName] || 0) <= 0) {
-        player.ammoReloadAt[weaponName] = room.time + weapon.reload;
+        player.ammoReloadAt[weaponName] = room.time + reloadTimeFor(player, weaponName, room);
       } else if (player.ammoReloadAt[weaponName] <= room.time) {
-        player.ammoReserve[weaponName] = weapon.ammo;
-        player.ammoReloadAt[weaponName] = 0;
+        if (weaponName === 'sniper') {
+          player.ammoReserve[weaponName] = Math.min(weapon.ammo, (player.ammoReserve[weaponName] || 0) + 1);
+          player.ammoReloadAt[weaponName] = player.ammoReserve[weaponName] < weapon.ammo ? room.time + reloadTimeFor(player, weaponName, room) : 0;
+        } else {
+          player.ammoReserve[weaponName] = weapon.ammo;
+          player.ammoReloadAt[weaponName] = 0;
+        }
       }
     }
     player.ammo = player.ammoReserve[player.active] || 0;
@@ -872,19 +872,18 @@ function updateBotInput(room, dt) {
 
   if (room.time >= player.aiDecisionAt) {
     const closeToBall = Math.abs(targetBall.y - player.y) < H * 0.42;
-    let desiredWeapon = closeToBall ? 'minigun' : 'sniper';
-    if ((player.ammoReserve[desiredWeapon] || 0) <= 0) desiredWeapon = desiredWeapon === 'minigun' ? 'sniper' : 'minigun';
+    const desiredWeapon = 'sniper';
     if (player.active !== desiredWeapon && (player.ammoReserve[desiredWeapon] || 0) > 0) player.queuedSwitch = desiredWeapon;
     player.aiDecisionAt = room.time + rand(0.45, 0.9);
   }
 
-  const aligned = Math.abs(targetBall.x - player.x) < (player.active === 'minigun' ? 185 : 110);
+  const aligned = Math.abs(targetBall.x - player.x) < 110;
   const ballInLane = player.role === 1 ? targetBall.y < H * 0.72 : targetBall.y > H * 0.28;
   if (aligned && ballInLane && room.time >= player.aiNextFireAt) {
     player.fire = true;
     player.fireDown = true;
     player.firePressed = true;
-    player.aiNextFireAt = room.time + (player.active === 'minigun' ? rand(0.55, 0.95) : rand(0.38, 0.78));
+    player.aiNextFireAt = room.time + rand(0.38, 0.78);
   } else {
     player.fire = false;
     player.fireDown = false;
@@ -897,12 +896,8 @@ function updatePlayers(room, dt) {
     if (player.queuedSwitch) {
       const requestedWeapon = player.queuedSwitch;
       const changedWeapon = switchWeapon(player, requestedWeapon, room);
-      if (player.fireDown && changedWeapon && requestedWeapon !== 'protection') {
+      if (player.fireDown && changedWeapon) {
         player.firePressed = true;
-      }
-      if (requestedWeapon === 'protection') {
-        player.nextShotAt = Math.min(player.nextShotAt, room.time);
-        activateProtection(room, player);
       }
       player.queuedSwitch = '';
     }
@@ -914,9 +909,13 @@ function updatePlayers(room, dt) {
     }
     player.x = clamp(player.x, 58, W - 58);
     player.y = PLAYER_Y[player.role];
-    const weapon = roomWeapon(room, player.active);
-    const wantsFire = weapon && weapon.semi ? player.firePressed : player.fire;
-    if (wantsFire) fireActive(room, player);
+    if (player.firePressed) {
+      fireActive(room, player);
+      player.holdRepeatAt = room.time + HOLD_FIRE_INTERVAL;
+    } else if (player.fireDown && room.time >= player.holdRepeatAt) {
+      fireActive(room, player);
+      player.holdRepeatAt = room.time + HOLD_FIRE_INTERVAL;
+    }
     player.firePressed = false;
   }
 }
@@ -930,11 +929,11 @@ function destroyBrick(room, brick) {
   if (!brick.alive) return;
   brick.alive = false;
   const owner = brick.owner;
-  if (Math.random() < room.rules.powerups.chance) {
+  if (brick.powerupKind) {
     room.powerups.push({
       id: nextObjectId++,
       owner,
-      kind: POWER_KINDS[Math.floor(Math.random() * POWER_KINDS.length)],
+      kind: brick.powerupKind,
       x: brick.x + brick.w / 2,
       y: brick.y + brick.h / 2,
       r: 24,
@@ -1098,11 +1097,6 @@ function updateProjectiles(room, dt) {
     projectile.ttl -= dt;
     let alive = projectile.ttl > 0 && projectile.x > -40 && projectile.x < W + 40 && projectile.y > -60 && projectile.y < H + 60;
 
-    if (alive && shouldExplodeShotgunShell(projectile)) {
-      explodeShotgunShell(room, projectile);
-      alive = false;
-    }
-
     if (alive) {
       for (const ball of room.balls) {
         const hit = segmentCircleCollision(prevX, prevY, projectile.x, projectile.y, ball.x, ball.y, projectile.r + ball.r);
@@ -1136,19 +1130,14 @@ function applyProjectileBallImpact(room, projectile, ball) {
 }
 
 function applyPowerup(room, player, powerup) {
-  if (powerup.kind === 'ammo') {
-    const weapon = roomWeapon(room, player.active);
-    const maxAmmo = weapon.ammo;
-    player.ammoReserve[player.active] = maxAmmo;
-    player.ammoReloadAt[player.active] = 0;
-    player.ammo = maxAmmo;
-    addEvent(room, `${player.name}: recharge ${weapon.label}`);
-  } else if (powerup.kind === 'shield') {
-    player.protectedUntil = Math.max(player.protectedUntil, room.time + room.rules.powerups.shieldDuration);
-    addEvent(room, `${player.name}: bouclier bonus`);
+  if (!ACTION_KINDS.includes(powerup.kind)) return;
+  player.actionStacks[powerup.kind] = (player.actionStacks[powerup.kind] || 0) + 1;
+  if (powerup.kind === 'shield') {
+    addEvent(room, `${player.name}: +1 shield`);
   } else if (powerup.kind === 'rapid') {
-    player.rapidUntil = Math.max(player.rapidUntil, room.time + room.rules.powerups.rapidDuration);
-    addEvent(room, `${player.name}: cooldown boost`);
+    addEvent(room, `${player.name}: +1 rapid`);
+  } else if (powerup.kind === 'split') {
+    addEvent(room, `${player.name}: +1 split`);
   }
 }
 
@@ -1163,12 +1152,10 @@ function updatePowerups(room, dt) {
     if (owner) {
       const rect = { x: owner.x - PLAYER_W / 2 - 10, y: owner.y - PLAYER_H / 2 - 10, w: PLAYER_W + 20, h: PLAYER_H + 20 };
       collected = circleRectCollides(powerup.x, powerup.y, powerup.r, rect);
-      if (!collected && ((powerup.owner === 0 && powerup.y > H - 18) || (powerup.owner === 1 && powerup.y < 18))) {
-        collected = true;
-      }
       if (collected) applyPowerup(room, owner, powerup);
     }
-    if (!collected && powerup.ttl > 0) survivors.push(powerup);
+    const missed = (powerup.owner === 0 && powerup.y > H + powerup.r) || (powerup.owner === 1 && powerup.y < -powerup.r);
+    if (!collected && !missed && powerup.ttl > 0) survivors.push(powerup);
   }
   room.powerups = survivors;
 }
@@ -1224,6 +1211,9 @@ function ammoReloadSnapshot(room, player) {
 }
 
 function playerSnapshot(room, player) {
+  const shieldRemaining = Math.max(0, player.protectedUntil - room.time);
+  const rapidRemaining = Math.max(0, player.rapidUntil - room.time);
+  const splitRemaining = Math.max(0, player.splitUntil - room.time);
   return {
     role: player.role,
     name: player.name,
@@ -1233,10 +1223,16 @@ function playerSnapshot(room, player) {
     ammo: player.ammo,
     ammoReserve: { ...player.ammoReserve },
     ammoReload: ammoReloadSnapshot(room, player),
+    actionStacks: { ...player.actionStacks },
     cooldown: Math.max(0, Math.round((player.nextShotAt - room.time) * 10) / 10),
     cooldownMax: Math.round(cooldownFor(player, room) * 100) / 100,
-    protected: player.protectedUntil > room.time,
-    rapid: Math.max(0, Math.round((player.rapidUntil - room.time) * 10) / 10)
+    protected: shieldRemaining > 0,
+    shield: Math.round(shieldRemaining * 10) / 10,
+    shieldMax: room.rules.powerups.shieldDuration,
+    rapid: Math.round(rapidRemaining * 10) / 10,
+    rapidMax: room.rules.powerups.rapidDuration,
+    split: Math.round(splitRemaining * 10) / 10,
+    splitMax: room.rules.powerups.splitDuration
   };
 }
 
@@ -1279,7 +1275,9 @@ function snapshot(room, role) {
       owner: p.owner,
       kind: p.kind,
       x: Math.round(p.x * 10) / 10,
-      y: Math.round(p.y * 10) / 10
+      y: Math.round(p.y * 10) / 10,
+      vx: Math.round(p.vx * 10) / 10,
+      vy: Math.round(p.vy * 10) / 10
     })),
     powerups: room.powerups.map((p) => ({
       id: p.id,
@@ -1341,9 +1339,9 @@ function serveStatic(req, res) {
           'Cross-Origin-Resource-Policy': 'same-origin'
         });
         res.end(`<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Brick Duel Server</title>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Breakshot Server</title>
 <style>body{font-family:system-ui;background:#0f172a;color:#e5e7eb;padding:32px;line-height:1.5}code{background:#111827;padding:2px 6px;border-radius:6px}</style></head>
-<body><h1>Brick Duel Server actif</h1><p>WebSocket prêt sur <code>ws://localhost:${PORT}</code>.</p><p>Exportez le projet Godot Web vers <code>web_export/index.html</code>, puis rechargez cette page.</p></body></html>`);
+<body><h1>Breakshot Server actif</h1><p>WebSocket prêt sur <code>ws://localhost:${PORT}</code>.</p><p>Exportez le projet Godot Web vers <code>web_export/index.html</code>, puis rechargez cette page.</p></body></html>`);
       } else {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Not found');
@@ -1376,7 +1374,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => handleMessage(ws, raw));
   ws.on('close', () => removeClient(ws));
   ws.on('error', () => removeClient(ws));
-  safeSend(ws, { type: 'event', message: 'Connecté au serveur Brick Duel' });
+  safeSend(ws, { type: 'event', message: 'Connecté au serveur Breakshot' });
 });
 
 setInterval(() => {
@@ -1398,7 +1396,7 @@ if (HTTPS_ENABLED && REDIRECT_HTTP_PORT > 0) {
 appServer.listen(PORT, () => {
   const protocol = HTTPS_ENABLED ? 'https' : 'http';
   const wsProtocol = HTTPS_ENABLED ? 'wss' : 'ws';
-  console.log(`Brick Duel server listening on ${protocol}://localhost:${PORT}`);
+  console.log(`Breakshot server listening on ${protocol}://localhost:${PORT}`);
   console.log(`WebSocket endpoint: ${wsProtocol}://localhost:${PORT}`);
   console.log(`Static web export root: ${STATIC_ROOT}`);
 });

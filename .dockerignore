@@ -1,0 +1,14 @@
+.deploy/
+.git/
+.github/
+.godot/
+server/node_modules/
+node_modules/
+
+*.log
+*.pid
+*.tmp
+Thumbs.db
+.DS_Store
+
+samibrick_texture_atlas_v1.zip
