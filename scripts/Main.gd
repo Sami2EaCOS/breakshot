@@ -1389,9 +1389,7 @@ func _draw_hud() -> void:
 			var active_pct := clampf(active_time / active_total, 0.0, 1.0)
 			_draw_weapon_arc(i, UI_WEAPON_INNER_RADIUS + 10.0, active_pct, Color(0.35, 0.72, 1.0, 0.75), 7.0)
 		var label_pos := _weapon_segment_label_pos(i)
-		var icon_rect := Rect2(label_pos.x - 25.0, label_pos.y - 25.0, 50.0, 50.0)
-		_draw_atlas_region(_action_icon_source(action), icon_rect, false, Color(1, 1, 1, 1.0 if is_ready or active_time > 0.0 else 0.48))
-		_draw_action_stack_icons(action, stack, label_pos)
+		_draw_action_stack_icons(action, stack, label_pos, is_ready or active_time > 0.0)
 
 	var fire_rect := _fire_button_rect()
 	var firing := fire_touches.size() > 0 or Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER)
@@ -1532,15 +1530,26 @@ func _action_active_total(player: Dictionary, action: String) -> float:
 		return maxf(0.01, float(player.get("splitMax", 3.0)))
 	return 1.0
 
-func _draw_action_stack_icons(action: String, stack: int, center: Vector2) -> void:
-	if stack <= 0:
-		return
+func _draw_action_stack_icons(action: String, stack: int, center: Vector2, highlighted: bool) -> void:
 	var icon := _action_icon_source(action)
-	var points := _stack_points(min(stack, 9))
-	var size := 13.0 if stack <= 4 else 11.0
+	var visible_count: int = mini(maxi(stack, 1), 9)
+	var points := _stack_points(visible_count)
+	var size := _stack_icon_size(visible_count)
+	var alpha := 0.98 if highlighted else 0.48
 	for point in points:
-		var p := center + point + Vector2(0.0, 42.0)
-		_draw_atlas_region(icon, Rect2(p.x - size * 0.5, p.y - size * 0.5, size, size), false, Color(1, 1, 1, 0.92))
+		var p := center + point
+		_draw_atlas_region(icon, Rect2(p.x - size * 0.5, p.y - size * 0.5, size, size), false, Color(1, 1, 1, alpha))
+
+func _stack_icon_size(count: int) -> float:
+	if count <= 1:
+		return 48.0
+	if count == 2:
+		return 32.0
+	if count == 3:
+		return 27.0
+	if count == 4:
+		return 25.0
+	return 20.0
 
 func _stack_points(count: int) -> Array[Vector2]:
 	if count <= 1:
@@ -1562,7 +1571,8 @@ func _stack_points(count: int) -> Array[Vector2]:
 
 func _draw_ammo_bar(fire_rect: Rect2, reserve: int, max_ammo: int, reload_remaining: float, reload_total: float) -> void:
 	var cells: int = maxi(1, max_ammo)
-	var bar: Rect2 = Rect2(fire_rect.position.x + fire_rect.size.x + 16.0, fire_rect.position.y + 10.0, 30.0, fire_rect.size.y - 20.0)
+	var bar_h: float = 214.0
+	var bar: Rect2 = Rect2(WORLD_W - 52.0, WORLD_H * 0.5 - bar_h * 0.5, 30.0, bar_h)
 	draw_rect(bar.grow(4.0), Color(0.0, 0.0, 0.0, 0.42), true)
 	draw_rect(bar.grow(4.0), Color(1, 1, 1, 0.18), false, 2.0)
 	var gap: float = 4.0
