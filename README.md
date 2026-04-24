@@ -74,7 +74,7 @@ Secrets optionnels :
 | `PROD_PORT` | `8787` | port local prod pour le reverse proxy |
 | `DEV_PORT` | `8788` | port local dev pour le reverse proxy |
 
-Le deploiement copie un tarball sur le serveur, build l'image Docker sur la machine distante, puis remplace le conteneur cible. Les ports sont bindes sur `127.0.0.1` pour etre consommes par le reverse proxy.
+Le deploiement copie un tarball sur le serveur, build l'image Docker sur la machine distante, puis remplace le conteneur cible. Les ports sont exposes directement sur l'hote : prod sur `8787`, dev sur `8788`.
 
 ## Gameplay actuel
 

@@ -118,7 +118,7 @@ jobs:
             --name "${CONTAINER_NAME}" \
             -e PORT=8787 \
             -e STATIC_ROOT=/app/web_export \
-            -p "127.0.0.1:${HOST_PORT}:8787" \
+            -p "${HOST_PORT}:8787" \
             "${IMAGE_TAG}"
 
           docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
