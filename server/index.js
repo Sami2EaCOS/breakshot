@@ -961,38 +961,7 @@ function bounceBallOffRect(ball, rect) {
 }
 
 function bounceBallOffPlayer(room, ball, player, rect, prevX, prevY) {
-  const dx = ball.x - prevX;
-  const dy = ball.y - prevY;
-  const away = player.role === 0 ? -1 : 1;
-  const relativeX = clamp((ball.x - player.x) / (PLAYER_W * 0.5), -1, 1);
-
-  if (prevY + ball.r <= rect.y && dy > 0) {
-    const contactY = rect.y - ball.r - 0.5;
-    const t = clamp((contactY - prevY) / dy, 0, 1);
-    ball.x = prevX + dx * t;
-    ball.y = contactY;
-  } else if (prevY - ball.r >= rect.y + rect.h && dy < 0) {
-    const contactY = rect.y + rect.h + ball.r + 0.5;
-    const t = clamp((contactY - prevY) / dy, 0, 1);
-    ball.x = prevX + dx * t;
-    ball.y = contactY;
-  } else if (prevX < rect.x && dx > 0) {
-    ball.x = rect.x - ball.r - 0.5;
-  } else if (prevX > rect.x + rect.w && dx < 0) {
-    ball.x = rect.x + rect.w + ball.r + 0.5;
-  } else {
-    ball.y = player.y + away * (PLAYER_H / 2 + ball.r + 0.5);
-  }
-
-  const side = ball.x < player.x ? -1 : 1;
-  if (ball.y + ball.r > rect.y && ball.y - ball.r < rect.y + rect.h && Math.abs(relativeX) > 0.86) {
-    ball.x = player.x + side * (PLAYER_W * 0.5 + ball.r + 2.0);
-    ball.vx = side * Math.max(Math.abs(ball.vx), room.rules.ball.minSpeed * 0.58);
-  }
-
-  ball.y = player.y + away * (PLAYER_H / 2 + ball.r + 2.0);
-  ball.vy = away * Math.max(Math.abs(ball.vy || 0), room.rules.ball.minSpeed * 0.74);
-  ball.vx += relativeX * room.rules.ball.minSpeed * 0.92;
+  bounceBallOffRect(ball, rect);
   ball.lastPlayerBounceRole = player.role;
   ball.lastPlayerBounceAt = room.time;
   normalizeBall(ball, room);

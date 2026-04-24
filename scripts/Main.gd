@@ -1355,6 +1355,7 @@ func _draw_players() -> void:
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
 		var turret_src := ATLAS_TURRET_BLUE if is_local else ATLAS_TURRET_RED
 		var rotate_180 := not is_local
+		_draw_player_bonus_effects(player, pos, is_local)
 		_draw_atlas_region(ship_src, Rect2(pos.x - 58.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(1, 1, 1, 0.98))
 		var turret_y := pos.y - 58.0 if is_local else pos.y - 12.0
 		_draw_atlas_region(turret_src, Rect2(pos.x - 35.0, turret_y, 70.0, 70.0), rotate_180, Color(1, 1, 1, 0.98))
@@ -1416,11 +1417,6 @@ func _draw_status_overlay() -> void:
 	var status := str(visual_state.get("status", "waiting"))
 	var winner := int(visual_state.get("winner", -1))
 	_draw_room_code_chip()
-	var log_y := 96.0
-	for log_i in range(event_log.size()):
-		var idx := event_log.size() - 1 - log_i
-		draw_string(font, Vector2(38, log_y), str(event_log[idx]), HORIZONTAL_ALIGNMENT_LEFT, WORLD_W - 76, 15, Color(1, 1, 1, 0.58))
-		log_y += 22.0
 	if status == "ended":
 		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(0, 0, 0, 0.68), true)
 		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(1, 1, 1, 0.24), false, 2.0)
@@ -1451,6 +1447,30 @@ func _draw_atlas_region_rotated(source: Rect2, rect: Rect2, angle: float, color:
 
 func _draw_button_region(source: Rect2, rect: Rect2, color: Color) -> void:
 	draw_texture_rect_region(TEX_BUTTON_ATLAS, rect, source, color)
+
+func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool) -> void:
+	var rapid_time := float(player.get("rapid", 0.0))
+	var split_time := float(player.get("split", 0.0))
+	var shield_time := float(player.get("shield", 0.0))
+	var dir := -1.0 if is_local else 1.0
+	var phase := Time.get_ticks_msec() * 0.006
+	if rapid_time > 0.0:
+		for i in range(3):
+			var offset := sin(phase + float(i) * 1.7) * 6.0
+			var start := pos + Vector2(-44.0 + float(i) * 44.0 + offset, -dir * 4.0)
+			var stop := start + Vector2(-dir * 0.0, dir * 42.0)
+			draw_line(start, stop, Color(1.0, 0.86, 0.18, 0.72), 4.0)
+			draw_line(start + Vector2(0, dir * 8.0), stop + Vector2(0, dir * 8.0), Color(1.0, 1.0, 1.0, 0.28), 1.5)
+	if split_time > 0.0:
+		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
+		var rotate_180 := not is_local
+		var ghost_alpha := 0.22 + 0.06 * sin(phase * 1.4)
+		_draw_atlas_region(ship_src, Rect2(pos.x - 74.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
+		_draw_atlas_region(ship_src, Rect2(pos.x - 42.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(0.72, 0.36, 1.0, ghost_alpha))
+		draw_arc(pos, 70.0, deg_to_rad(205.0), deg_to_rad(335.0), 32, Color(0.68, 0.36, 1.0, 0.56), 4.0)
+	if shield_time > 0.0:
+		draw_arc(pos, 86.0, phase, phase + TAU * 0.72, 48, Color(0.24, 1.0, 0.56, 0.68), 5.0)
+		draw_arc(pos, 94.0, -phase * 0.7, -phase * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)
 
 func _fit_transform() -> Dictionary:
 	var screen: Vector2 = get_viewport_rect().size
@@ -1572,7 +1592,7 @@ func _stack_points(count: int) -> Array[Vector2]:
 func _draw_ammo_bar(fire_rect: Rect2, reserve: int, max_ammo: int, reload_remaining: float, reload_total: float) -> void:
 	var cells: int = maxi(1, max_ammo)
 	var bar_h: float = 214.0
-	var bar: Rect2 = Rect2(WORLD_W - 52.0, WORLD_H * 0.5 - bar_h * 0.5, 30.0, bar_h)
+	var bar: Rect2 = Rect2(WORLD_W - 70.0, WORLD_H * 0.5 - bar_h * 0.5, 30.0, bar_h)
 	draw_rect(bar.grow(4.0), Color(0.0, 0.0, 0.0, 0.42), true)
 	draw_rect(bar.grow(4.0), Color(1, 1, 1, 0.18), false, 2.0)
 	var gap: float = 4.0
