@@ -122,4 +122,4 @@ jobs:
             "${IMAGE_TAG}"
 
           docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-REMOTE
+          REMOTE
