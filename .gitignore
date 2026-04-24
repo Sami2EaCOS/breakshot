@@ -1,0 +1,9 @@
+.deploy/
+.godot/
+server/node_modules/
+
+*.tmp
+*.log
+*.pid
+Thumbs.db
+.DS_Store

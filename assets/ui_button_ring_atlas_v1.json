@@ -1,0 +1,22 @@
+{
+  "image": "ui_button_ring_atlas_v1.png",
+  "size": { "w": 2048, "h": 1536 },
+  "frames": {
+    "fire_idle": { "x": 8, "y": 8, "w": 176, "h": 176 },
+    "fire_pressed": { "x": 200, "y": 8, "w": 176, "h": 176 },
+    "weapon_0_idle": { "x": 8, "y": 208, "w": 384, "h": 384 },
+    "weapon_0_active": { "x": 408, "y": 208, "w": 384, "h": 384 },
+    "weapon_0_empty": { "x": 808, "y": 208, "w": 384, "h": 384 },
+    "weapon_1_idle": { "x": 8, "y": 608, "w": 384, "h": 384 },
+    "weapon_1_active": { "x": 408, "y": 608, "w": 384, "h": 384 },
+    "weapon_1_empty": { "x": 808, "y": 608, "w": 384, "h": 384 },
+    "weapon_2_idle": { "x": 8, "y": 1008, "w": 384, "h": 384 },
+    "weapon_2_active": { "x": 408, "y": 1008, "w": 384, "h": 384 },
+    "weapon_2_empty": { "x": 808, "y": 1008, "w": 384, "h": 384 }
+  },
+  "layout": {
+    "weapon_inner_radius": 88,
+    "weapon_outer_radius": 184,
+    "angles_degrees": [[-86, -34], [-27, 27], [34, 86]]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "brick-duel-one-shot-server",
+  "version": "1.0.0",
+  "description": "WebSocket relay + authoritative MVP server for Brick Duel One-Shot Godot Web clients.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.1"
+  }
+}
