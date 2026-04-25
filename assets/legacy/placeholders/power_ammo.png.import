@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvob3rmeis6xq"
-path="res://.godot/imported/projectile_miniball.png-cb390694bf709fb83ba9062713c453c7.ctex"
+uid="uid://bhh1b3i30ef8d"
+path="res://.godot/imported/power_ammo.png-38ffdc25aec55610ae24c3c772858f54.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/projectile_miniball.png"
-dest_files=["res://.godot/imported/projectile_miniball.png-cb390694bf709fb83ba9062713c453c7.ctex"]
+source_file="res://assets/legacy/placeholders/power_ammo.png"
+dest_files=["res://.godot/imported/power_ammo.png-38ffdc25aec55610ae24c3c772858f54.ctex"]
 
 [params]
 

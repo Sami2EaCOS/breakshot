@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1vclr0tsqewc"
-path="res://.godot/imported/projectile_minigun.png-6e61ce2b379d2a876b82c6b72fff4a1e.ctex"
+uid="uid://duat7mucjbw2o"
+path="res://.godot/imported/brick_local.png-517bfc85ba89d3108a71b4e91f2a84a1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/projectile_minigun.png"
-dest_files=["res://.godot/imported/projectile_minigun.png-6e61ce2b379d2a876b82c6b72fff4a1e.ctex"]
+source_file="res://assets/legacy/placeholders/brick_local.png"
+dest_files=["res://.godot/imported/brick_local.png-517bfc85ba89d3108a71b4e91f2a84a1.ctex"]
 
 [params]
 

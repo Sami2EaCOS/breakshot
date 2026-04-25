@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dk62uy1qmfbkb"
-path="res://.godot/imported/power_rapid.png-9999beec083579b0045048a4e0f776d3.ctex"
+uid="uid://b8yyx6buutyf3"
+path="res://.godot/imported/cannon_local.png-f858854aa2c13c5b132a93fb62de9f74.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/power_rapid.png"
-dest_files=["res://.godot/imported/power_rapid.png-9999beec083579b0045048a4e0f776d3.ctex"]
+source_file="res://assets/legacy/placeholders/cannon_local.png"
+dest_files=["res://.godot/imported/cannon_local.png-f858854aa2c13c5b132a93fb62de9f74.ctex"]
 
 [params]
 

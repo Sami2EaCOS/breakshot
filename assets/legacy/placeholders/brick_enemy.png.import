@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bd18na6rqv462"
-path="res://.godot/imported/brick_enemy.png-8d223116b69ddafcdc8702bf5e367281.ctex"
+uid="uid://jbumsky1d5e8"
+path="res://.godot/imported/brick_enemy.png-3fa0b174b5755a8054f91029aec79bd7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/brick_enemy.png"
-dest_files=["res://.godot/imported/brick_enemy.png-8d223116b69ddafcdc8702bf5e367281.ctex"]
+source_file="res://assets/legacy/placeholders/brick_enemy.png"
+dest_files=["res://.godot/imported/brick_enemy.png-3fa0b174b5755a8054f91029aec79bd7.ctex"]
 
 [params]
 

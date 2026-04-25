@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dreh25f8dps5n"
-path="res://.godot/imported/fx_shield_ring.png-da9203b7f41c0e7f2c6160bda62b426e.ctex"
+uid="uid://b8ym6d8hl2cww"
+path="res://.godot/imported/projectile_minigun.png-a65b1eaf460cf43c8c7bedce5ca242b3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/fx_shield_ring.png"
-dest_files=["res://.godot/imported/fx_shield_ring.png-da9203b7f41c0e7f2c6160bda62b426e.ctex"]
+source_file="res://assets/legacy/placeholders/projectile_minigun.png"
+dest_files=["res://.godot/imported/projectile_minigun.png-a65b1eaf460cf43c8c7bedce5ca242b3.ctex"]
 
 [params]
 

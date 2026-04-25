@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b681g8l377ei0"
-path="res://.godot/imported/fx_rapid_trail.png-96f7999d6a3e5d186376f7a7a7cbf6e8.ctex"
+uid="uid://bovtckqjlgrwk"
+path="res://.godot/imported/fx_shield_ring.png-fec40dfbdddb329fc027e927a6e400da.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/fx_rapid_trail.png"
-dest_files=["res://.godot/imported/fx_rapid_trail.png-96f7999d6a3e5d186376f7a7a7cbf6e8.ctex"]
+source_file="res://assets/effects/fx_shield_ring.png"
+dest_files=["res://.godot/imported/fx_shield_ring.png-fec40dfbdddb329fc027e927a6e400da.ctex"]
 
 [params]
 

@@ -1,5 +1,13 @@
 extends Control
 
+# Feature layout:
+# - setup/connection/rooms: _ready through _send_json
+# - client input: _input through _request_action
+# - presentation feedback: audio, latency, ammo feedback
+# - state interpolation: _record_state_snapshot through _interpolate_object
+# - rendering: _draw through _draw_player_bonus_effects
+# - layout helpers: _fit_transform through bottom rect helpers
+
 @export var websocket_url: String = "ws://localhost:8787"
 @export var player_name: String = "Player"
 @export var auto_connect: bool = true
@@ -27,8 +35,8 @@ const ACTION_LABELS: Dictionary = {
 	"split": "Split"
 }
 
-const TEX_ATLAS: Texture2D = preload("res://assets/samibrick_texture_atlas_v1.png")
-const TEX_BUTTON_ATLAS: Texture2D = preload("res://assets/ui_button_ring_atlas_v1.png")
+const TEX_ATLAS: Texture2D = preload("res://assets/game/samibrick_texture_atlas_v1.png")
+const TEX_BUTTON_ATLAS: Texture2D = preload("res://assets/ui/ui_button_ring_atlas_v1.png")
 var tex_space_bg: Texture2D
 var tex_fx_shield: Texture2D
 var tex_fx_rapid: Texture2D
@@ -140,10 +148,10 @@ func _ready() -> void:
 		_connect_to_server()
 
 func _load_effect_assets() -> void:
-	tex_space_bg = load("res://assets/space_starfield.png")
-	tex_fx_shield = load("res://assets/fx_shield_ring.png")
-	tex_fx_rapid = load("res://assets/fx_rapid_trail.png")
-	tex_fx_split = load("res://assets/fx_split_ghost.png")
+	tex_space_bg = load("res://assets/backgrounds/space_starfield.png")
+	tex_fx_shield = load("res://assets/effects/fx_shield_ring.png")
+	tex_fx_rapid = load("res://assets/effects/fx_rapid_trail.png")
+	tex_fx_split = load("res://assets/effects/fx_split_ghost.png")
 
 func _process(delta: float) -> void:
 	_poll_socket()

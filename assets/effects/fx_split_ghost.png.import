@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cq2awn5ay1qku"
-path="res://.godot/imported/cannon_local.png-2ee51186d7280577e713c18c7a8c34cb.ctex"
+uid="uid://hadxcgf0af0h"
+path="res://.godot/imported/fx_split_ghost.png-ba211cd63b3569920f009acf819b611a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/cannon_local.png"
-dest_files=["res://.godot/imported/cannon_local.png-2ee51186d7280577e713c18c7a8c34cb.ctex"]
+source_file="res://assets/effects/fx_split_ghost.png"
+dest_files=["res://.godot/imported/fx_split_ghost.png-ba211cd63b3569920f009acf819b611a.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2wfsfrjdkuxd"
-path="res://.godot/imported/ui_button_ring_atlas_v1.png-8324a6c18550fddb2cc75f88f2d454d1.ctex"
+uid="uid://bw70umahwxi5y"
+path="res://.godot/imported/projectile_sniper.png-ddb6aa2337290dcef8afeb95e14a987b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui_button_ring_atlas_v1.png"
-dest_files=["res://.godot/imported/ui_button_ring_atlas_v1.png-8324a6c18550fddb2cc75f88f2d454d1.ctex"]
+source_file="res://assets/legacy/placeholders/projectile_sniper.png"
+dest_files=["res://.godot/imported/projectile_sniper.png-ddb6aa2337290dcef8afeb95e14a987b.ctex"]
 
 [params]
 

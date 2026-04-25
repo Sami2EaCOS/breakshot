@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cdekuqy6my3wo"
-path="res://.godot/imported/power_ammo.png-279d7041eab7326a1cfe80dfba060776.ctex"
+uid="uid://b32k5njkywbr1"
+path="res://.godot/imported/samibrick_texture_atlas_v1.png-4b2fea63e0e693f323271a2e72c7f5ba.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/power_ammo.png"
-dest_files=["res://.godot/imported/power_ammo.png-279d7041eab7326a1cfe80dfba060776.ctex"]
+source_file="res://assets/game/samibrick_texture_atlas_v1.png"
+dest_files=["res://.godot/imported/samibrick_texture_atlas_v1.png-4b2fea63e0e693f323271a2e72c7f5ba.ctex"]
 
 [params]
 

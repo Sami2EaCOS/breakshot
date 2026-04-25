@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b2pnuqsd4d0c0"
-path="res://.godot/imported/space_starfield.png-56ef8b6fd0399b4441b3c03efde49b84.ctex"
+uid="uid://bdwnwcubo00d5"
+path="res://.godot/imported/power_shield.png-9a90b52a2be5a6b2210da35706c8751b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/space_starfield.png"
-dest_files=["res://.godot/imported/space_starfield.png-56ef8b6fd0399b4441b3c03efde49b84.ctex"]
+source_file="res://assets/legacy/placeholders/power_shield.png"
+dest_files=["res://.godot/imported/power_shield.png-9a90b52a2be5a6b2210da35706c8751b.ctex"]
 
 [params]
 

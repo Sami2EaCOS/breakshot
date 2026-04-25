@@ -8,6 +8,12 @@ Prototype Godot Web 1v1 : duel vertical entre Pong, casse-briques et tirs de pro
 - `scenes/Main.tscn` : scene principale.
 - `scripts/Main.gd` : client Godot, rendu, inputs tactile/clavier, WebSocket.
 - `server/index.js` : serveur Node.js autoritaire + serveur statique pour l'export Web.
+- `server/src/rules.js` : constantes gameplay, regles par defaut et sanitation.
+- `assets/game/` : atlas principal des sprites de gameplay.
+- `assets/ui/` : atlas des boutons et controles.
+- `assets/backgrounds/` : fonds d'arene.
+- `assets/effects/` : effets visuels runtime.
+- `assets/legacy/` : anciens placeholders et references.
 - `web_export/` : build Web generee par Godot.
 - `Dockerfile` : image de production qui sert `web_export/` via le serveur Node.
 - `.github/workflows/deploy.yml` : CI/CD GitHub Actions.
@@ -85,7 +91,7 @@ Le deploiement copie un tarball sur le serveur, build l'image Docker sur la mach
 - Actions stockables : `rapid`, `shield`, `split`.
 - `rapid` accelere temporairement la recharge.
 - `shield` protege temporairement les briques.
-- `split` transforme temporairement les tirs sniper en triple tir.
+- `split` transforme temporairement les tirs sniper en tir multiple a 4 projectiles.
 
 ## Production
 

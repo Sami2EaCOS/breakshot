@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dewkha8h1x3bd"
-path="res://.godot/imported/samibrick_texture_atlas_v1.png-13ec6eba14300a2378f4722f510e1213.ctex"
+uid="uid://bwu5niaxgl5qo"
+path="res://.godot/imported/projectile_miniball.png-60e17fad401e996ee9436a9bb4750e45.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/samibrick_texture_atlas_v1.png"
-dest_files=["res://.godot/imported/samibrick_texture_atlas_v1.png-13ec6eba14300a2378f4722f510e1213.ctex"]
+source_file="res://assets/legacy/placeholders/projectile_miniball.png"
+dest_files=["res://.godot/imported/projectile_miniball.png-60e17fad401e996ee9436a9bb4750e45.ctex"]
 
 [params]
 

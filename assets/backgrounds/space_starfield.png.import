@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c7kkfl04p3oxb"
-path="res://.godot/imported/cannon_enemy.png-feed32f2971ef8e11e1f384aa6bfd099.ctex"
+uid="uid://bd184mlt7a561"
+path="res://.godot/imported/space_starfield.png-61c1db1a0409cfa677e871eaa03acc4a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/cannon_enemy.png"
-dest_files=["res://.godot/imported/cannon_enemy.png-feed32f2971ef8e11e1f384aa6bfd099.ctex"]
+source_file="res://assets/backgrounds/space_starfield.png"
+dest_files=["res://.godot/imported/space_starfield.png-61c1db1a0409cfa677e871eaa03acc4a.ctex"]
 
 [params]
 

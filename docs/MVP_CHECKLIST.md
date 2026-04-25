@@ -17,4 +17,4 @@
 | Power-ups comeback | Apparition sur brique cassée, propriétaire du mur comme bénéficiaire |
 | Victoire | Toutes les briques d'un joueur détruites |
 | Téléphone/tactile | Arène portrait + drag + bouton TIR + boutons actifs |
-| Placeholders | PNG dans `assets/placeholders/` |
+| Placeholders | PNG historiques dans `assets/legacy/placeholders/` |

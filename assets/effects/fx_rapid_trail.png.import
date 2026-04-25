@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bh4msyn7w0a35"
-path="res://.godot/imported/brick_local.png-d2760e55dee716a861a1613c44bbfa46.ctex"
+uid="uid://bus2jc8gyws0y"
+path="res://.godot/imported/fx_rapid_trail.png-0752a14e48304428c27f2668b1657935.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/brick_local.png"
-dest_files=["res://.godot/imported/brick_local.png-d2760e55dee716a861a1613c44bbfa46.ctex"]
+source_file="res://assets/effects/fx_rapid_trail.png"
+dest_files=["res://.godot/imported/fx_rapid_trail.png-0752a14e48304428c27f2668b1657935.ctex"]
 
 [params]
 

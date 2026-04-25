@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4t1lqbeqf230"
-path="res://.godot/imported/power_shield.png-96d1e78d59ebe45c2d100a4fbfe6ce66.ctex"
+uid="uid://daye1lmpdsayx"
+path="res://.godot/imported/ui_button_ring_atlas_v1.png-f6fa05afef6b1298a9c4c0af15053e2c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/power_shield.png"
-dest_files=["res://.godot/imported/power_shield.png-96d1e78d59ebe45c2d100a4fbfe6ce66.ctex"]
+source_file="res://assets/ui/ui_button_ring_atlas_v1.png"
+dest_files=["res://.godot/imported/ui_button_ring_atlas_v1.png-f6fa05afef6b1298a9c4c0af15053e2c.ctex"]
 
 [params]
 

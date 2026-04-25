@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://lafqf2ymhpf4"
-path="res://.godot/imported/fx_split_ghost.png-19df1bf5bfc1dd76fb1eab20a6d154ae.ctex"
+uid="uid://bqmwexhnbeku3"
+path="res://.godot/imported/cannon_enemy.png-93fd59ed367b0444850bcbe681a3d49f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/fx_split_ghost.png"
-dest_files=["res://.godot/imported/fx_split_ghost.png-19df1bf5bfc1dd76fb1eab20a6d154ae.ctex"]
+source_file="res://assets/legacy/placeholders/cannon_enemy.png"
+dest_files=["res://.godot/imported/cannon_enemy.png-93fd59ed367b0444850bcbe681a3d49f.ctex"]
 
 [params]
 
