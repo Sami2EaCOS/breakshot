@@ -1400,12 +1400,9 @@ func _draw_players() -> void:
 		if is_local and touch_target_x >= 0.0:
 			pos.x = touch_target_x
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
-		var turret_src := ATLAS_TURRET_BLUE if is_local else ATLAS_TURRET_RED
 		var rotate_180 := not is_local
 		_draw_player_bonus_effects(player, pos, is_local)
 		_draw_atlas_region(ship_src, Rect2(pos.x - 58.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(1, 1, 1, 0.98))
-		var turret_y := pos.y - 58.0 if is_local else pos.y - 12.0
-		_draw_atlas_region(turret_src, Rect2(pos.x - 35.0, turret_y, 70.0, 70.0), rotate_180, Color(1, 1, 1, 0.98))
 		if bool(player.get("protected", false)):
 			var bubble_src := ATLAS_SHIELD_BUBBLE_BLUE if is_local else ATLAS_SHIELD_BUBBLE_RED
 			_draw_atlas_region(bubble_src, Rect2(pos.x - 76.0, pos.y - 76.0, 152.0, 152.0), false, Color(1, 1, 1, 0.7))

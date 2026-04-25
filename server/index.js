@@ -775,7 +775,7 @@ function spawnProjectile(room, player) {
   const weapon = roomWeapon(room, player.active);
   if (!weapon) return;
   const direction = player.role === 0 ? -1 : 1;
-  const angles = player.splitUntil > room.time ? [-0.22, 0, 0.22] : [0];
+  const angles = player.splitUntil > room.time ? [-0.24, -0.08, 0.08, 0.24] : [0];
   for (const angle of angles) {
     room.projectiles.push({
       id: nextObjectId++,
