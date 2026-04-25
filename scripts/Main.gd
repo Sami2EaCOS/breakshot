@@ -159,6 +159,15 @@ func _wire_editor_ui() -> void:
 	game_hud.room_code_hold_started.connect(func() -> void: _start_room_code_hold("hud_room_code"))
 	game_hud.room_code_hold_finished.connect(func() -> void: _finish_room_code_hold())
 	game_hud.rematch_requested.connect(func() -> void: _request_rematch())
+	game_hud.lobby_code_focused.connect(func() -> void: lobby_join_focused = true)
+	game_hud.lobby_code_changed.connect(func(value: String) -> void:
+		lobby_join_focused = true
+		lobby_join_code = RoomCodeScript.normalize(value)
+	)
+	game_hud.lobby_code_submitted.connect(func(value: String) -> void:
+		lobby_join_code = RoomCodeScript.normalize(value)
+		_start_join_room(lobby_join_code)
+	)
 
 func _load_effect_assets() -> void:
 	tex_space_bg = load("res://assets/backgrounds/space_starfield.png")
@@ -180,7 +189,6 @@ func _process(delta: float) -> void:
 	if send_accumulator >= SEND_RATE:
 		send_accumulator = 0.0
 		_send_input()
-	_update_editor_fps()
 	queue_redraw()
 
 func _connect_to_server() -> void:
@@ -914,12 +922,6 @@ func _draw_virtual() -> void:
 	_draw_hud()
 	_draw_status_overlay()
 
-func _update_editor_fps() -> void:
-	if not is_instance_valid(game_hud):
-		return
-	var latency_text := "--" if server_latency_ms < 0 else str(server_latency_ms)
-	game_hud.set_fps_text("FPS %d  %sms" % [Engine.get_frames_per_second(), latency_text])
-
 func _layout_editor_ui() -> void:
 	if not is_instance_valid(game_hud):
 		return
@@ -934,6 +936,7 @@ func _sync_editor_ui(state: Dictionary) -> void:
 	if room_code_hold_id != "":
 		hold_progress = clampf(room_code_hold_elapsed / ROOM_CODE_HOLD_SECONDS, 0.0, 1.0)
 	game_hud.set_room_code(room_code, hold_progress, room_code_copied_time > 0.0)
+	game_hud.set_lobby_code(lobby_join_code, lobby_menu_visible, lobby_join_focused)
 	if state.is_empty():
 		game_hud.set_ready_state(false, "", 0, 2, 0.0)
 		game_hud.set_rematch_visible(false)
@@ -973,8 +976,6 @@ func _draw_lobby_menu() -> void:
 	var input_rect := _lobby_join_input_rect()
 	draw_rect(input_rect, Color(0, 0, 0, 0.38), true)
 	draw_rect(input_rect, Color(0.7, 0.95, 1.0, 0.72 if lobby_join_focused else 0.28), false, 2.0)
-	var code_text := lobby_join_code if lobby_join_code != "" else "CODE ROOM"
-	_draw_centered_text(code_text, input_rect.get_center() + Vector2(0, 10), 28, Color(1, 1, 1, 0.96 if lobby_join_code != "" else 0.45))
 	_draw_menu_button(_lobby_join_paste_rect(), "COLLER", Color(0.10, 0.20, 0.28, 0.92), false)
 	_draw_menu_button(_lobby_join_rect(), "REJOINDRE", Color(0.48, 0.14, 0.34, 0.92), true)
 

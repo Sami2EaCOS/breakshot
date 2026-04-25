@@ -9,39 +9,25 @@ offset_bottom = 1280.0
 mouse_filter = 2
 script = ExtResource("1_hud")
 
-[node name="FpsPanel" type="Panel" parent="."]
+[node name="RoomCodeFill" type="ColorRect" parent="."]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 164.0
-offset_bottom = 42.0
+offset_left = 230.0
+offset_top = 736.0
+offset_right = 230.0
+offset_bottom = 788.0
 mouse_filter = 2
-
-[node name="FpsLabel" type="Label" parent="FpsPanel"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 4.0
-offset_right = -8.0
-offset_bottom = -4.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-text = "FPS --  --ms"
-vertical_alignment = 1
+color = Color(0.15, 0.62, 0.9, 0.46)
 
 [node name="RoomCodeButton" type="Button" parent="."]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 24.0
-offset_top = 26.0
-offset_right = 164.0
-offset_bottom = 68.0
+offset_left = 230.0
+offset_top = 736.0
+offset_right = 490.0
+offset_bottom = 788.0
 focus_mode = 0
+flat = true
 text = "ROOM"
 
 [node name="StatusLabel" type="Label" parent="."]
@@ -107,3 +93,18 @@ offset_bottom = 629.0
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "REVANCHE"
+
+[node name="LobbyCodeInput" type="LineEdit" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 116.0
+offset_top = 620.0
+offset_right = 488.0
+offset_bottom = 686.0
+focus_mode = 2
+theme_override_font_sizes/font_size = 28
+placeholder_text = "CODE ROOM"
+alignment = 1
+max_length = 12
+virtual_keyboard_type = 2
