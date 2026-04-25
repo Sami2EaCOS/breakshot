@@ -124,102 +124,8 @@ function cloneDefaultRules() {
   };
 }
 
-function decodeRulesPayload(value) {
-  if (typeof value !== 'string' || value.trim() === '') return {};
-  const raw = value.trim();
-  try {
-    return objectOrEmpty(JSON.parse(raw));
-  } catch (_) {
-    try {
-      const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
-      return objectOrEmpty(JSON.parse(Buffer.from(padded, 'base64').toString('utf8')));
-    } catch (_) {
-      return {};
-    }
-  }
-}
-
-function deepMergePlain(base, patch) {
-  const output = objectOrEmpty(base);
-  for (const [key, value] of Object.entries(objectOrEmpty(patch))) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      output[key] = deepMergePlain(objectOrEmpty(output[key]), value);
-    } else {
-      output[key] = value;
-    }
-  }
-  return output;
-}
-
-function copyParamNumber(params, target, key, aliases) {
-  for (const alias of aliases) {
-    if (params[alias] !== undefined && params[alias] !== '') {
-      target[key] = params[alias];
-      return;
-    }
-  }
-}
-
-function copyParamBool(params, target, key, aliases) {
-  for (const alias of aliases) {
-    if (params[alias] !== undefined && params[alias] !== '') {
-      target[key] = params[alias];
-      return;
-    }
-  }
-}
-
-function rulesFromParams(params) {
-  const cleanParams = objectOrEmpty(params);
-  const overrides = {};
-  if (cleanParams.rules !== undefined) {
-    deepMergePlain(overrides, decodeRulesPayload(String(cleanParams.rules)));
-  }
-
-  const player = {};
-  copyParamNumber(cleanParams, player, 'speed', ['playerSpeed', 'speed']);
-  if (Object.keys(player).length > 0) overrides.player = player;
-
-  const ball = {};
-  copyParamNumber(cleanParams, ball, 'radius', ['ballRadius', 'ballR']);
-  copyParamNumber(cleanParams, ball, 'minSpeed', ['ballMinSpeed']);
-  copyParamNumber(cleanParams, ball, 'maxSpeed', ['ballMaxSpeed']);
-  copyParamNumber(cleanParams, ball, 'serveSpeedMin', ['ballServeMin']);
-  copyParamNumber(cleanParams, ball, 'serveSpeedMax', ['ballServeMax']);
-  if (Object.keys(ball).length > 0) overrides.ball = ball;
-
-  const powerups = {};
-  copyParamNumber(cleanParams, powerups, 'chance', ['powerupChance']);
-  copyParamNumber(cleanParams, powerups, 'speed', ['powerupSpeed']);
-  copyParamNumber(cleanParams, powerups, 'shieldDuration', ['bonusShieldDuration']);
-  copyParamNumber(cleanParams, powerups, 'rapidDuration', ['rapidDuration']);
-  copyParamNumber(cleanParams, powerups, 'splitDuration', ['splitDuration']);
-  copyParamNumber(cleanParams, powerups, 'rapidCooldownMultiplier', ['rapidMultiplier']);
-  if (Object.keys(powerups).length > 0) overrides.powerups = powerups;
-
-  const weapons = {};
-  for (const weaponName of WEAPON_ORDER) {
-    const weapon = {};
-    const prefix = weaponName;
-    copyParamNumber(cleanParams, weapon, 'ammo', [`${prefix}Ammo`, `${prefix}.ammo`]);
-    copyParamNumber(cleanParams, weapon, 'cooldown', [`${prefix}Cooldown`, `${prefix}.cooldown`]);
-    copyParamNumber(cleanParams, weapon, 'reload', [`${prefix}Reload`, `${prefix}.reload`]);
-    copyParamNumber(cleanParams, weapon, 'speed', [`${prefix}Speed`, `${prefix}.speed`]);
-    copyParamNumber(cleanParams, weapon, 'radius', [`${prefix}Radius`, `${prefix}.radius`]);
-    copyParamNumber(cleanParams, weapon, 'impact', [`${prefix}Impact`, `${prefix}.impact`]);
-    copyParamNumber(cleanParams, weapon, 'pellets', [`${prefix}Pellets`, `${prefix}.pellets`]);
-    copyParamNumber(cleanParams, weapon, 'spread', [`${prefix}Spread`, `${prefix}.spread`]);
-    copyParamNumber(cleanParams, weapon, 'duration', [`${prefix}Duration`, `${prefix}.duration`]);
-    copyParamBool(cleanParams, weapon, 'semi', [`${prefix}Semi`, `${prefix}.semi`]);
-    if (Object.keys(weapon).length > 0) weapons[weaponName] = weapon;
-  }
-  if (Object.keys(weapons).length > 0) overrides.weapons = weapons;
-  return overrides;
-}
-
 function sanitizeRules(input = {}) {
-  const decodedInput = typeof input === 'string' ? decodeRulesPayload(input) : objectOrEmpty(input);
+  const decodedInput = objectOrEmpty(input);
   const defaults = cloneDefaultRules();
   const rules = cloneDefaultRules();
   const player = objectOrEmpty(decodedInput.player);
@@ -260,20 +166,6 @@ function sanitizeRules(input = {}) {
   }
 
   return rules;
-}
-
-function rulesFromClientMessage(data) {
-  let rules = {};
-  if (data && data.rules !== undefined) {
-    rules = deepMergePlain(rules, typeof data.rules === 'string' ? decodeRulesPayload(data.rules) : objectOrEmpty(data.rules));
-  }
-  if (data && data.rulesCode !== undefined) {
-    rules = deepMergePlain(rules, decodeRulesPayload(String(data.rulesCode)));
-  }
-  if (data && data.rulesParams !== undefined) {
-    rules = deepMergePlain(rules, rulesFromParams(data.rulesParams));
-  }
-  return sanitizeRules(rules);
 }
 
 function roomWeapon(room, weaponName) {
@@ -453,7 +345,6 @@ function createRoom(options = {}) {
     hostRole: null,
     rules,
     clients: [null, null],
-    configOpen: [false, false],
     botRole: null,
     players: [createPlayer(0, 'Player 1', rules), createPlayer(1, 'Player 2', rules)],
     status: 'waiting',
@@ -475,16 +366,12 @@ function connectedCount(room) {
   return room.clients.reduce((count, ws) => count + (ws ? 1 : 0), 0) + (room.botRole === 0 || room.botRole === 1 ? 1 : 0);
 }
 
-function anyConfigOpen(room) {
-  return room.configOpen.some(Boolean);
-}
-
 function hasParticipant(room, role) {
   return Boolean(room.clients[role]) || room.botRole === role;
 }
 
 function canStartCountdown(room) {
-  return hasParticipant(room, 0) && hasParticipant(room, 1) && !anyConfigOpen(room);
+  return hasParticipant(room, 0) && hasParticipant(room, 1);
 }
 
 function resetRoom(room, status = null) {
@@ -577,7 +464,6 @@ function addClientToRoom(ws, room, name, preferredRole = -1) {
     return false;
   }
   room.clients[role] = ws;
-  room.configOpen[role] = false;
   room.players[role].name = String(name || `Player ${role + 1}`).slice(0, 20);
   if (room.hostRole === null || room.hostRole === undefined) room.hostRole = role;
   ws._brickDuelRoom = room;
@@ -592,7 +478,6 @@ function addClientToRoom(ws, room, name, preferredRole = -1) {
 function addBotToRoom(room, role = 1) {
   if (!room || hasParticipant(room, role)) return false;
   room.botRole = role;
-  room.configOpen[role] = false;
   room.players[role].name = 'Bot';
   addEvent(room, 'Bot rejoint la salle');
   if (canStartCountdown(room)) startCountdown(room);
@@ -600,8 +485,8 @@ function addBotToRoom(room, role = 1) {
   return true;
 }
 
-function createBotRoom(ws, name, rules) {
-  const room = createRoom({ public: false, rules });
+function createBotRoom(ws, name) {
+  const room = createRoom({ public: false });
   if (!addClientToRoom(ws, room, name, 0)) return false;
   return addBotToRoom(room, 1);
 }
@@ -621,7 +506,6 @@ function removeClient(ws) {
   const role = ws._brickDuelRole;
   if (!room || role === undefined) return;
   if (room.clients[role] === ws) room.clients[role] = null;
-  room.configOpen[role] = false;
   const other = role === 0 ? 1 : 0;
   if (room.clients[other]) {
     room.status = 'waiting';
@@ -656,14 +540,14 @@ function handleMessage(ws, raw) {
 
   if (data.type === 'createRoom') {
     if (!ws._brickDuelRoom) {
-      const room = createRoom({ public: false, rules: rulesFromClientMessage(data) });
+      const room = createRoom({ public: false });
       addClientToRoom(ws, room, data.name || 'Player', 0);
     }
     return;
   }
 
   if (data.type === 'botRoom') {
-    if (!ws._brickDuelRoom) createBotRoom(ws, data.name || 'Player', rulesFromClientMessage(data));
+    if (!ws._brickDuelRoom) createBotRoom(ws, data.name || 'Player');
     return;
   }
 
@@ -683,22 +567,6 @@ function handleMessage(ws, raw) {
   const room = ws._brickDuelRoom;
   const role = ws._brickDuelRole;
   if (!room || role === undefined) return;
-
-  if (data.type === 'updateRules') {
-    if (room.hostRole !== role) {
-      safeSend(ws, { type: 'error', message: 'Seul l hote peut changer les regles' });
-      return;
-    }
-    if (room.status !== 'waiting') {
-      safeSend(ws, { type: 'error', message: 'Regles modifiables uniquement en attente' });
-      return;
-    }
-    room.rules = rulesFromClientMessage(data);
-    resetRoom(room, 'waiting');
-    addEvent(room, 'Regles de room mises a jour');
-    sendRoomInfo(room);
-    return;
-  }
 
   if (data.type === 'start') {
     if (room.hostRole === role) startCountdown(room);
@@ -722,28 +590,19 @@ function handleMessage(ws, raw) {
     if (typeof data.action === 'string' && room.status === 'playing') {
       activateAction(room, player, data.action);
     }
-  } else if (data.type === 'configState') {
-    room.configOpen[role] = Boolean(data.open);
-    if (room.configOpen[role] && room.status === 'countdown') {
-      room.status = 'waiting';
-      room.countdownRemaining = 0;
-      addEvent(room, 'Config ouverte, countdown interrompu');
-    } else if (!anyConfigOpen(room) && room.status === 'waiting' && canStartCountdown(room)) {
-      startCountdown(room);
-    }
   } else if (data.type === 'restart') {
     startCountdown(room);
   }
 }
 
 function switchWeapon(player, weapon, room) {
-  const config = roomWeapon(room, weapon);
-  if (!config) return false;
+  const weaponRules = roomWeapon(room, weapon);
+  if (!weaponRules) return false;
   const changed = weapon !== player.active;
   player.active = weapon;
   player.ammo = player.ammoReserve[weapon] || 0;
   player.nextShotAt = Math.min(player.nextShotAt, room.time);
-  if (changed) addEvent(room, `${player.name}: ${config.label}`);
+  if (changed) addEvent(room, `${player.name}: ${weaponRules.label}`);
   return changed;
 }
 
@@ -1148,7 +1007,7 @@ function checkVictory(room) {
 
 function tickRoom(room, dt) {
   if (room.status === 'countdown') {
-    if (connectedCount(room) < 2 || anyConfigOpen(room)) {
+    if (connectedCount(room) < 2) {
       room.status = 'waiting';
       room.countdownRemaining = 0;
       return;
@@ -1225,9 +1084,8 @@ function snapshot(room, role) {
     winner: room.winner,
     playerCount: connectedCount(room),
     capacity: 2,
-    configuring: anyConfigOpen(room),
     countdown: Math.max(0, Math.round((room.countdownRemaining || 0) * 10) / 10),
-    message: room.status === 'waiting' ? (anyConfigOpen(room) ? 'Configuration en cours...' : 'En attente d\'un adversaire...') : (room.status === 'countdown' ? `Debut dans ${Math.ceil(room.countdownRemaining || 0)}s` : ''),
+    message: room.status === 'waiting' ? 'En attente d\'un adversaire...' : (room.status === 'countdown' ? `Debut dans ${Math.ceil(room.countdownRemaining || 0)}s` : ''),
     t: Math.round(room.time * 1000) / 1000,
     w: W,
     h: H,

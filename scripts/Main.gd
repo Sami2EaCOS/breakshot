@@ -77,9 +77,6 @@ var lobby_join_focused := false
 var lobby_paste_pending := false
 var lobby_paste_timeout := 0.0
 var room_launch_mode := ""
-var config_panel_open := false
-var config_draft: Dictionary = {}
-var config_message := ""
 var room_code_hold_id := ""
 var room_code_hold_elapsed := 0.0
 var room_code_hold_copied := false
@@ -127,8 +124,6 @@ func _ready() -> void:
 	_load_effect_assets()
 	_setup_audio()
 	url_params = _resolve_url_params()
-	config_draft = _default_config()
-	_apply_url_params_to_config()
 	room_code = _room_code_from_params(url_params)
 	if room_code != "":
 		room_launch_mode = "join"
@@ -269,12 +264,10 @@ func _send_room_join() -> void:
 		payload["roomCode"] = room_code
 	elif room_launch_mode == "bot" or _wants_bot_match():
 		payload["type"] = "botRoom"
-		payload["rulesParams"] = _rules_params_from_config()
 	elif room_launch_mode == "quick" or _wants_quick_match():
 		payload["type"] = "join"
 	else:
 		payload["type"] = "createRoom"
-		payload["rulesParams"] = _rules_params_from_config()
 	_send_json(payload)
 
 func _update_reconnect(delta: float) -> void:
@@ -329,7 +322,6 @@ func _handle_packet(packet: String) -> void:
 
 func _start_create_room() -> void:
 	lobby_menu_visible = false
-	_set_config_panel_open(false)
 	lobby_join_focused = false
 	room_launch_mode = "create"
 	room_code = ""
@@ -338,7 +330,6 @@ func _start_create_room() -> void:
 
 func _start_quick_match() -> void:
 	lobby_menu_visible = false
-	_set_config_panel_open(false)
 	lobby_join_focused = false
 	room_launch_mode = "quick"
 	room_code = ""
@@ -347,7 +338,6 @@ func _start_quick_match() -> void:
 
 func _start_bot_match() -> void:
 	lobby_menu_visible = false
-	_set_config_panel_open(false)
 	lobby_join_focused = false
 	room_launch_mode = "bot"
 	room_code = ""
@@ -361,7 +351,6 @@ func _start_join_room(code: String) -> void:
 		lobby_join_focused = true
 		return
 	lobby_menu_visible = false
-	_set_config_panel_open(false)
 	lobby_join_focused = false
 	room_launch_mode = "join"
 	room_code = normalized
@@ -423,13 +412,6 @@ func _handle_pong(data: Dictionary) -> void:
 	var sent_ms := int(pending_pings.get(seq))
 	pending_pings.erase(seq)
 	server_latency_ms = max(0, Time.get_ticks_msec() - sent_ms)
-
-func _set_config_panel_open(open: bool) -> void:
-	if config_panel_open == open:
-		return
-	config_panel_open = open
-	if not lobby_menu_visible and has_joined and room_code != "":
-		_send_json({"type": "configState", "open": open})
 
 func _send_input() -> void:
 	if socket.get_ready_state() != WebSocketPeer.STATE_OPEN or not has_joined:
@@ -517,19 +499,11 @@ func _handle_menu_input(event: InputEvent) -> bool:
 				_cancel_room_code_hold()
 			return true
 	if event is InputEventKey and event.pressed and not event.echo:
-		if config_panel_open:
-			if event.keycode == KEY_ESCAPE:
-				_set_config_panel_open(false)
-				return true
-			return true
 		if lobby_menu_visible:
 			return _handle_lobby_key(event)
-	return config_panel_open or lobby_menu_visible
+	return lobby_menu_visible
 
 func _handle_menu_click(pos: Vector2, pointer_id: String) -> bool:
-	if config_panel_open:
-		_handle_config_click(pos)
-		return true
 	if lobby_menu_visible:
 		_handle_lobby_click(pos)
 		return true
@@ -538,12 +512,6 @@ func _handle_menu_click(pos: Vector2, pointer_id: String) -> bool:
 		return true
 	if _room_code_copy_rect().has_point(pos) and room_code != "":
 		_start_room_code_hold(pointer_id)
-		return true
-	if _room_config_button_visible() and _room_config_button_rect().has_point(pos):
-		if _can_configure_room():
-			_open_config_panel()
-		else:
-			status_message = "Config verrouillee pendant la partie"
 		return true
 	return false
 
@@ -566,8 +534,6 @@ func _handle_lobby_click(pos: Vector2) -> void:
 			if prompted != "":
 				lobby_join_code = prompted
 		_start_join_room(lobby_join_code)
-	elif _lobby_config_rect().has_point(pos):
-		_open_config_panel()
 
 func _handle_lobby_key(event: InputEventKey) -> bool:
 	if event.keycode == KEY_ESCAPE:
@@ -608,15 +574,15 @@ func _paste_lobby_join_code() -> void:
 	var pasted := _extract_room_code(DisplayServer.clipboard_get())
 	if pasted != "":
 		lobby_join_code = pasted
-		config_message = "Code colle"
+		status_message = "Code colle"
 		return
 	if OS.has_feature("web"):
 		lobby_paste_pending = true
 		lobby_paste_timeout = 1.2
-		config_message = "Lecture presse-papiers..."
+		status_message = "Lecture presse-papiers..."
 		JavaScriptBridge.eval("(function(){ window.__brickDuelPasteReady=false; window.__brickDuelPaste=''; if (navigator.clipboard && navigator.clipboard.readText) { navigator.clipboard.readText().then(function(t){ window.__brickDuelPaste=String(t || ''); window.__brickDuelPasteReady=true; }).catch(function(){ window.__brickDuelPaste=''; window.__brickDuelPasteReady=true; }); } else { window.__brickDuelPasteReady=true; } })()", false)
 	else:
-		config_message = "Presse-papiers vide"
+		status_message = "Presse-papiers vide"
 
 func _update_lobby_clipboard_paste(delta: float) -> void:
 	if not lobby_paste_pending:
@@ -630,14 +596,14 @@ func _update_lobby_clipboard_paste(delta: float) -> void:
 			var pasted := _extract_room_code(str(JavaScriptBridge.eval("window.__brickDuelPaste || ''", true)))
 			if pasted != "":
 				lobby_join_code = pasted
-				config_message = "Code colle"
+				status_message = "Code colle"
 			else:
-				config_message = "Collage impossible"
+				status_message = "Collage impossible"
 			JavaScriptBridge.eval("window.__brickDuelPasteReady=false; window.__brickDuelPaste='';", false)
 			return
 	if lobby_paste_timeout <= 0.0:
 		lobby_paste_pending = false
-		config_message = "Collage impossible"
+		status_message = "Collage impossible"
 
 func _extract_room_code(text: String) -> String:
 	var raw := text.strip_edges()
@@ -656,27 +622,6 @@ func _extract_room_code(text: String) -> String:
 					stop = delimiter_idx
 			return _normalize_room_code(raw.substr(start, stop - start))
 	return _normalize_room_code(raw)
-
-func _handle_config_click(pos: Vector2) -> void:
-	if _config_apply_rect().has_point(pos):
-		_apply_config()
-		return
-	if _config_close_rect().has_point(pos):
-		_set_config_panel_open(false)
-		return
-	if _config_reset_rect().has_point(pos):
-		config_draft = _default_config()
-		if not lobby_menu_visible:
-			_sync_config_from_rules()
-		return
-	var rows := _config_rows()
-	for i in range(rows.size()):
-		if _config_minus_rect(i).has_point(pos):
-			_adjust_config_value(i, -1)
-			return
-		if _config_plus_rect(i).has_point(pos):
-			_adjust_config_value(i, 1)
-			return
 
 func _start_room_code_hold(pointer_id: String) -> void:
 	room_code_hold_id = pointer_id
@@ -929,91 +874,6 @@ func _request_action(action: String) -> void:
 		pending_action = action
 		_send_input()
 
-func _default_config() -> Dictionary:
-	return {
-		"sniperAmmo": 5,
-		"sniperReload": 0.8,
-		"ballRadius": 17,
-		"playerSpeed": 760
-	}
-
-func _apply_url_params_to_config() -> void:
-	for key in config_draft.keys():
-		if url_params.has(key):
-			config_draft[key] = float(url_params.get(key))
-
-func _sync_config_from_rules() -> void:
-	if room_rules.is_empty():
-		return
-	var weapons = room_rules.get("weapons", {})
-	var player = room_rules.get("player", {})
-	var ball = room_rules.get("ball", {})
-	if typeof(weapons) == TYPE_DICTIONARY:
-		var sniper = weapons.get("sniper", {})
-		if typeof(sniper) == TYPE_DICTIONARY:
-			config_draft["sniperAmmo"] = sniper.get("ammo", config_draft.get("sniperAmmo", 5))
-			config_draft["sniperReload"] = sniper.get("reload", config_draft.get("sniperReload", 0.8))
-	if typeof(ball) == TYPE_DICTIONARY:
-		config_draft["ballRadius"] = ball.get("radius", config_draft.get("ballRadius", 17))
-	if typeof(player) == TYPE_DICTIONARY:
-		config_draft["playerSpeed"] = player.get("speed", config_draft.get("playerSpeed", 760))
-
-func _rules_params_from_config() -> Dictionary:
-	var params := config_draft.duplicate(true)
-	return params
-
-func _config_rows() -> Array:
-	return [
-		{"key": "sniperAmmo", "label": "Sniper balles", "step": 1.0, "min": 1.0, "max": 20.0, "decimals": 0},
-		{"key": "sniperReload", "label": "Sniper recharge", "step": 0.05, "min": 0.1, "max": 8.0, "decimals": 2},
-		{"key": "ballRadius", "label": "Taille balle", "step": 1.0, "min": 5.0, "max": 42.0, "decimals": 0},
-		{"key": "playerSpeed", "label": "Vitesse joueur", "step": 40.0, "min": 260.0, "max": 1500.0, "decimals": 0}
-	]
-
-func _config_value_text(row: Dictionary) -> String:
-	var value := float(config_draft.get(str(row.get("key", "")), 0.0))
-	var decimals := int(row.get("decimals", 0))
-	if decimals <= 0:
-		return "%d" % int(round(value))
-	return "%.*f" % [decimals, value]
-
-func _adjust_config_value(index: int, direction: int) -> void:
-	var rows := _config_rows()
-	if index < 0 or index >= rows.size():
-		return
-	var row: Dictionary = rows[index]
-	var key := str(row.get("key", ""))
-	var value := float(config_draft.get(key, 0.0))
-	var step := float(row.get("step", 1.0))
-	var min_value := float(row.get("min", value))
-	var max_value := float(row.get("max", value))
-	config_draft[key] = clampf(value + step * float(direction), min_value, max_value)
-
-func _apply_config() -> void:
-	if lobby_menu_visible:
-		_set_config_panel_open(false)
-		config_message = "Config prete pour la prochaine room"
-		return
-	if not _can_configure_room():
-		config_message = "Config room disponible seulement pour l'hote en attente"
-		return
-	_send_json({"type": "updateRules", "rulesParams": _rules_params_from_config()})
-	_set_config_panel_open(false)
-	config_message = "Config envoyee"
-
-func _open_config_panel() -> void:
-	if not lobby_menu_visible:
-		_sync_config_from_rules()
-	_set_config_panel_open(true)
-	config_message = ""
-
-func _can_configure_room() -> bool:
-	var status := str(current_state.get("status", "waiting"))
-	return room_code != "" and is_room_host and (status == "waiting" or status == "countdown")
-
-func _room_config_button_visible() -> bool:
-	return room_code != "" and is_room_host
-
 func _weapon_rules(weapon: String) -> Dictionary:
 	var weapons = room_rules.get("weapons", {})
 	if typeof(weapons) != TYPE_DICTIONARY:
@@ -1151,14 +1011,10 @@ func _draw_virtual() -> void:
 	_draw_background()
 	if lobby_menu_visible:
 		_draw_lobby_menu()
-		if config_panel_open:
-			_draw_config_panel()
 		return
 	visual_state = _get_render_state()
 	if visual_state.is_empty():
 		_draw_waiting_screen()
-		if config_panel_open:
-			_draw_config_panel()
 		return
 	_draw_bricks()
 	_draw_powerups()
@@ -1169,17 +1025,9 @@ func _draw_virtual() -> void:
 	if status == "waiting" or status == "countdown":
 		_draw_room_ready_overlay()
 		_draw_status_overlay()
-		if _room_config_button_visible():
-			_draw_room_config_button()
-		if config_panel_open:
-			_draw_config_panel()
 		return
 	_draw_hud()
 	_draw_status_overlay()
-	if _room_config_button_visible():
-		_draw_room_config_button()
-	if config_panel_open:
-		_draw_config_panel()
 
 func _draw_background() -> void:
 	if tex_space_bg:
@@ -1211,26 +1059,6 @@ func _draw_lobby_menu() -> void:
 	_draw_centered_text(code_text, input_rect.get_center() + Vector2(0, 10), 28, Color(1, 1, 1, 0.96 if lobby_join_code != "" else 0.45))
 	_draw_menu_button(_lobby_join_paste_rect(), "COLLER", Color(0.10, 0.20, 0.28, 0.92), false)
 	_draw_menu_button(_lobby_join_rect(), "REJOINDRE", Color(0.48, 0.14, 0.34, 0.92), true)
-	_draw_menu_button(_lobby_config_rect(), "CONFIG", Color(0.16, 0.18, 0.25, 0.92), true)
-	var summary := "Sniper %s | Recharge %ss | Balle %s | Vitesse %s" % [
-		_config_value_text({"key": "sniperAmmo", "decimals": 0}),
-		_config_value_text({"key": "sniperReload", "decimals": 2}),
-		_config_value_text({"key": "ballRadius", "decimals": 0}),
-		_config_value_text({"key": "playerSpeed", "decimals": 0})
-	]
-	draw_string(ui_font, Vector2(panel.position.x + 32.0, panel.position.y + panel.size.y - 72.0), summary, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 64.0, 17, Color(0.86, 0.93, 1.0, 0.72))
-	if config_message != "":
-		draw_string(ui_font, Vector2(panel.position.x + 32.0, panel.position.y + panel.size.y - 36.0), config_message, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 64.0, 17, Color(0.7, 1.0, 0.78, 0.82))
-
-func _draw_room_config_button() -> void:
-	var enabled := _can_configure_room()
-	if enabled:
-		_draw_menu_button(_room_config_button_rect(), "CONFIG", Color(0.05, 0.18, 0.25, 0.78), false)
-		return
-	var rect := _room_config_button_rect()
-	draw_rect(rect, Color(0.08, 0.085, 0.095, 0.58), true)
-	draw_rect(rect, Color(1, 1, 1, 0.12), false, 2.0)
-	_draw_centered_text("CONFIG", rect.get_center() + Vector2(0, 8), 18, Color(0.56, 0.60, 0.64, 0.72))
 
 func _draw_room_code_chip() -> void:
 	if room_code == "":
@@ -1268,28 +1096,6 @@ func _draw_room_ready_overlay() -> void:
 	_draw_centered_text("%d/%d" % [player_count, capacity], rect.get_center() + Vector2(0, -2), 56, Color(1, 1, 1, 0.98))
 	var sub := "EN ATTENTE"
 	_draw_centered_text(sub, rect.get_center() + Vector2(0, 50), 18, Color(0.76, 0.92, 1.0, 0.88))
-
-func _draw_config_panel() -> void:
-	draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0, 0, 0, 0.58), true)
-	var panel := _config_panel_rect()
-	draw_rect(panel, Color(0.025, 0.032, 0.044, 0.97), true)
-	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.32), false, 2.0)
-	_draw_centered_text("CONFIG", Vector2(WORLD_W * 0.5, panel.position.y + 56.0), 42, Color(1, 1, 1, 1))
-	var subtitle := "Avant creation" if lobby_menu_visible else ("Hote - room %s" % room_code)
-	_draw_centered_text(subtitle, Vector2(WORLD_W * 0.5, panel.position.y + 88.0), 17, Color(0.72, 0.90, 1.0, 0.82))
-	var rows := _config_rows()
-	for i in range(rows.size()):
-		var row: Dictionary = rows[i]
-		var y := _config_row_y(i)
-		draw_string(ui_font, Vector2(panel.position.x + 34.0, y + 9.0), str(row.get("label", "")), HORIZONTAL_ALIGNMENT_LEFT, 280, 18, Color(0.95, 0.98, 1.0, 0.92))
-		_draw_menu_button(_config_minus_rect(i), "-", Color(0.16, 0.19, 0.25, 0.95), false)
-		_draw_centered_text(_config_value_text(row), _config_value_center(i), 20, Color(1, 1, 1, 0.96))
-		_draw_menu_button(_config_plus_rect(i), "+", Color(0.16, 0.19, 0.25, 0.95), false)
-	_draw_menu_button(_config_reset_rect(), "RESET", Color(0.22, 0.19, 0.16, 0.95), false)
-	_draw_menu_button(_config_apply_rect(), "APPLIQUER", Color(0.08, 0.40, 0.28, 0.95), false)
-	_draw_menu_button(_config_close_rect(), "FERMER", Color(0.28, 0.12, 0.16, 0.95), false)
-	if config_message != "":
-		draw_string(ui_font, Vector2(panel.position.x + 32.0, panel.position.y + panel.size.y - 20.0), config_message, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 64.0, 16, Color(0.78, 1.0, 0.82, 0.86))
 
 func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> void:
 	draw_rect(rect, fill, true)
@@ -1686,12 +1492,6 @@ func _lobby_join_paste_rect() -> Rect2:
 func _lobby_join_rect() -> Rect2:
 	return Rect2(116.0, 700.0, WORLD_W - 232.0, 72.0)
 
-func _lobby_config_rect() -> Rect2:
-	return Rect2(116.0, 790.0, WORLD_W - 232.0, 64.0)
-
-func _room_config_button_rect() -> Rect2:
-	return Rect2(WORLD_W - 156.0, 26.0, 132.0, 42.0)
-
 func _room_code_copy_rect() -> Rect2:
 	return Rect2(24.0, 26.0, 140.0, 42.0)
 
@@ -1700,32 +1500,6 @@ func _rematch_button_rect() -> Rect2:
 
 func _rematch_button_visible() -> bool:
 	return str(current_state.get("status", "")) == "ended"
-
-func _config_panel_rect() -> Rect2:
-	return Rect2(54.0, 118.0, WORLD_W - 108.0, 1010.0)
-
-func _config_row_y(index: int) -> float:
-	return 258.0 + float(index) * 72.0
-
-func _config_minus_rect(index: int) -> Rect2:
-	return Rect2(360.0, _config_row_y(index) - 16.0, 54.0, 48.0)
-
-func _config_plus_rect(index: int) -> Rect2:
-	return Rect2(536.0, _config_row_y(index) - 16.0, 54.0, 48.0)
-
-func _config_value_center(index: int) -> Vector2:
-	var left := _config_minus_rect(index).position.x + _config_minus_rect(index).size.x
-	var right := _config_plus_rect(index).position.x
-	return Vector2((left + right) * 0.5, _config_row_y(index) + 24.0)
-
-func _config_reset_rect() -> Rect2:
-	return Rect2(78.0, 1010.0, 150.0, 60.0)
-
-func _config_apply_rect() -> Rect2:
-	return Rect2(244.0, 1010.0, 210.0, 60.0)
-
-func _config_close_rect() -> Rect2:
-	return Rect2(470.0, 1010.0, 170.0, 60.0)
 
 func _fire_button_rect() -> Rect2:
 	return Rect2(18.0, WORLD_H * 0.5 - 74.0, 148.0, 148.0)
