@@ -119,6 +119,7 @@ var ping_timer := 0.0
 var ping_seq := 0
 var pending_pings: Dictionary = {}
 var server_latency_ms := -1
+var ball_visual_angle := 0.0
 
 func _ready() -> void:
 	set_process(true)
@@ -155,6 +156,7 @@ func _process(delta: float) -> void:
 	_update_room_code_hold(delta)
 	_update_lobby_clipboard_paste(delta)
 	_update_ammo_empty_feedback(delta)
+	ball_visual_angle = fposmod(ball_visual_angle - TAU * 0.55 * delta, TAU)
 	fire_blocked_sound_cooldown = maxf(0.0, fire_blocked_sound_cooldown - delta)
 	_update_server_ping(delta)
 	room_code_copied_time = maxf(0.0, room_code_copied_time - delta)
@@ -1387,7 +1389,7 @@ func _draw_ball_object(ball: Dictionary) -> void:
 	var pos := _world_to_local(Vector2(float(ball.get("x", WORLD_W * 0.5)), float(ball.get("y", WORLD_H * 0.5))))
 	var r := float(ball.get("r", 16.0))
 	var rect := Rect2(pos.x - r, pos.y - r, r * 2.0, r * 2.0)
-	_draw_atlas_region(ATLAS_BALL_MAIN, rect, false, Color(1, 1, 1, 1))
+	_draw_atlas_region_rotated(ATLAS_BALL_MAIN, rect, ball_visual_angle, Color(1, 1, 1, 1))
 
 func _draw_players() -> void:
 	var players: Array = visual_state.get("players", [])
