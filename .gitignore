@@ -1,6 +1,7 @@
 .deploy/
 .godot/
 server/node_modules/
+docs/image_prompts_refs/*.import
 
 *.tmp
 *.log

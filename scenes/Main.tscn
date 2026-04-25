@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://brickduelmain"]
+[gd_scene load_steps=3 format=3 uid="uid://brickduelmain"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameHud.tscn" id="2_hud"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -11,3 +12,5 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_main")
+
+[node name="GameHud" parent="." instance=ExtResource("2_hud")]

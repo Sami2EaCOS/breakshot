@@ -1,10 +1,10 @@
 extends Control
 
 # Feature layout:
-# - setup/connection/rooms: _ready through _send_json
+# - setup/connection/rooms: _ready through _send_json, with room helpers in scripts/features/room
 # - client input: _input through _request_action
-# - presentation feedback: audio, latency, ammo feedback
-# - state interpolation: _record_state_snapshot through _interpolate_object
+# - presentation feedback: audio, latency, ammo feedback, with audio helpers in scripts/features/audio
+# - state interpolation: _record_state_snapshot through _get_render_state, with interpolation helpers in scripts/features/state
 # - rendering: _draw through _draw_player_bonus_effects
 # - layout helpers: _fit_transform through bottom rect helpers
 
@@ -37,6 +37,9 @@ const ACTION_LABELS: Dictionary = {
 
 const TEX_ATLAS: Texture2D = preload("res://assets/game/samibrick_texture_atlas_v1.png")
 const TEX_BUTTON_ATLAS: Texture2D = preload("res://assets/ui/ui_button_ring_atlas_v1.png")
+const ToneFactoryScript = preload("res://scripts/features/audio/ToneFactory.gd")
+const RoomCodeScript = preload("res://scripts/features/room/RoomCode.gd")
+const StateInterpolatorScript = preload("res://scripts/features/state/StateInterpolator.gd")
 var tex_space_bg: Texture2D
 var tex_fx_shield: Texture2D
 var tex_fx_rapid: Texture2D
@@ -126,13 +129,16 @@ var pending_pings: Dictionary = {}
 var server_latency_ms := -1
 var ball_visual_angle := 0.0
 
+@onready var game_hud: Control = $GameHud
+
 func _ready() -> void:
 	set_process(true)
 	ui_font = get_theme_default_font()
 	_load_effect_assets()
+	_wire_editor_ui()
 	_setup_audio()
 	url_params = _resolve_url_params()
-	room_code = _room_code_from_params(url_params)
+	room_code = RoomCodeScript.from_params(url_params)
 	if room_code != "":
 		room_launch_mode = "join"
 	elif _wants_bot_match():
@@ -146,6 +152,13 @@ func _ready() -> void:
 	status_message = "Choisis un mode de jeu" if lobby_menu_visible else _initial_connection_message()
 	if auto_connect and not lobby_menu_visible:
 		_connect_to_server()
+
+func _wire_editor_ui() -> void:
+	if not is_instance_valid(game_hud):
+		return
+	game_hud.room_code_hold_started.connect(func() -> void: _start_room_code_hold("hud_room_code"))
+	game_hud.room_code_hold_finished.connect(func() -> void: _finish_room_code_hold())
+	game_hud.rematch_requested.connect(func() -> void: _request_rematch())
 
 func _load_effect_assets() -> void:
 	tex_space_bg = load("res://assets/backgrounds/space_starfield.png")
@@ -167,6 +180,7 @@ func _process(delta: float) -> void:
 	if send_accumulator >= SEND_RATE:
 		send_accumulator = 0.0
 		_send_input()
+	_update_editor_fps()
 	queue_redraw()
 
 func _connect_to_server() -> void:
@@ -204,13 +218,6 @@ func _resolve_url_params() -> Dictionary:
 		return parsed
 	return {}
 
-func _room_code_from_params(params: Dictionary) -> String:
-	for key in ["room", "code", "roomCode"]:
-		var value := str(params.get(key, "")).strip_edges().to_upper()
-		if value != "":
-			return value
-	return ""
-
 func _url_param_bool(key: String) -> bool:
 	var value := str(url_params.get(key, "")).strip_edges().to_lower()
 	return ["1", "true", "yes", "on"].has(value)
@@ -231,16 +238,6 @@ func _initial_connection_message() -> String:
 	if room_launch_mode == "quick" or _wants_quick_match():
 		return "Connexion matchmaking rapide..."
 	return "Creation d'une room privee..."
-
-func _normalize_room_code(value: String) -> String:
-	var output := ""
-	for i in range(value.length()):
-		var code := value.unicode_at(i)
-		if code >= 97 and code <= 122:
-			code -= 32
-		if (code >= 65 and code <= 90) or (code >= 48 and code <= 57):
-			output += char(code)
-	return output.substr(0, 12)
 
 func _poll_socket() -> void:
 	socket.poll()
@@ -353,7 +350,7 @@ func _start_bot_match() -> void:
 	_connect_to_server()
 
 func _start_join_room(code: String) -> void:
-	var normalized := _normalize_room_code(code)
+	var normalized := RoomCodeScript.normalize(code)
 	if normalized == "":
 		status_message = "Entre un code room"
 		lobby_join_focused = true
@@ -483,43 +480,21 @@ func _handle_menu_input(event: InputEvent) -> bool:
 		var pos := _screen_to_virtual(event.position)
 		if event.pressed:
 			return _handle_menu_click(pos, "mouse")
-		if room_code_hold_id == "mouse":
-			_finish_room_code_hold()
-			return true
-	if event is InputEventMouseMotion and room_code_hold_id == "mouse":
-		var pos := _screen_to_virtual(event.position)
-		if not _room_code_copy_rect().has_point(pos):
-			_cancel_room_code_hold()
-		return true
+		return false
 	if event is InputEventScreenTouch:
 		var id := "touch_%s" % event.index
 		var pos := _screen_to_virtual(event.position)
 		if event.pressed:
 			return _handle_menu_click(pos, id)
-		if room_code_hold_id == id:
-			_finish_room_code_hold()
-			return true
-	if event is InputEventScreenDrag:
-		var id := "touch_%s" % event.index
-		if room_code_hold_id == id:
-			var pos := _screen_to_virtual(event.position)
-			if not _room_code_copy_rect().has_point(pos):
-				_cancel_room_code_hold()
-			return true
+		return false
 	if event is InputEventKey and event.pressed and not event.echo:
 		if lobby_menu_visible:
 			return _handle_lobby_key(event)
 	return lobby_menu_visible
 
-func _handle_menu_click(pos: Vector2, pointer_id: String) -> bool:
+func _handle_menu_click(pos: Vector2, _pointer_id: String) -> bool:
 	if lobby_menu_visible:
 		_handle_lobby_click(pos)
-		return true
-	if _rematch_button_visible() and _rematch_button_rect().has_point(pos):
-		_request_rematch()
-		return true
-	if _room_code_copy_rect().has_point(pos) and room_code != "":
-		_start_room_code_hold(pointer_id)
 		return true
 	return false
 
@@ -559,7 +534,7 @@ func _handle_lobby_key(event: InputEventKey) -> bool:
 		_paste_lobby_join_code()
 		return true
 	if lobby_join_focused and event.unicode > 0:
-		lobby_join_code = _normalize_room_code(lobby_join_code + char(event.unicode))
+		lobby_join_code = RoomCodeScript.normalize(lobby_join_code + char(event.unicode))
 		return true
 	if event.keycode == KEY_Q:
 		_start_quick_match()
@@ -575,11 +550,11 @@ func _handle_lobby_key(event: InputEventKey) -> bool:
 func _prompt_join_code() -> String:
 	if OS.has_feature("web"):
 		var raw := str(JavaScriptBridge.eval("window.prompt('Code room') || ''", true))
-		return _extract_room_code(raw)
+		return RoomCodeScript.extract(raw)
 	return ""
 
 func _paste_lobby_join_code() -> void:
-	var pasted := _extract_room_code(DisplayServer.clipboard_get())
+	var pasted := RoomCodeScript.extract(DisplayServer.clipboard_get())
 	if pasted != "":
 		lobby_join_code = pasted
 		status_message = "Code colle"
@@ -601,7 +576,7 @@ func _update_lobby_clipboard_paste(delta: float) -> void:
 		var ready: bool = ready_value == true or str(ready_value).to_lower() == "true"
 		if ready:
 			lobby_paste_pending = false
-			var pasted := _extract_room_code(str(JavaScriptBridge.eval("window.__brickDuelPaste || ''", true)))
+			var pasted := RoomCodeScript.extract(str(JavaScriptBridge.eval("window.__brickDuelPaste || ''", true)))
 			if pasted != "":
 				lobby_join_code = pasted
 				status_message = "Code colle"
@@ -612,24 +587,6 @@ func _update_lobby_clipboard_paste(delta: float) -> void:
 	if lobby_paste_timeout <= 0.0:
 		lobby_paste_pending = false
 		status_message = "Collage impossible"
-
-func _extract_room_code(text: String) -> String:
-	var raw := text.strip_edges()
-	if raw == "":
-		return ""
-	var lower := raw.to_lower()
-	for marker in ["roomcode=", "room=", "code="]:
-		var marker_text := str(marker)
-		var idx := lower.find(marker_text)
-		if idx >= 0:
-			var start: int = idx + marker_text.length()
-			var stop: int = raw.length()
-			for delimiter in ["&", "#", "?", " ", "\n", "\r", "\t"]:
-				var delimiter_idx := raw.find(str(delimiter), start)
-				if delimiter_idx >= 0 and delimiter_idx < stop:
-					stop = delimiter_idx
-			return _normalize_room_code(raw.substr(start, stop - start))
-	return _normalize_room_code(raw)
 
 func _start_room_code_hold(pointer_id: String) -> void:
 	room_code_hold_id = pointer_id
@@ -665,45 +622,19 @@ func _copy_room_code() -> void:
 	status_message = "Code %s copie" % room_code
 
 func _setup_audio() -> void:
-	sound_streams["shoot"] = _make_tone(920.0, 520.0, 0.075, 0.24)
-	sound_streams["brick"] = _make_tone(180.0, 82.0, 0.13, 0.30)
-	sound_streams["bonus"] = _make_tone(540.0, 1040.0, 0.16, 0.22)
-	sound_streams["empty"] = _make_tone(190.0, 150.0, 0.11, 0.20)
-	sound_streams["blocked"] = _make_tone(250.0, 95.0, 0.16, 0.24)
-	sound_streams["count"] = _make_tone(720.0, 720.0, 0.08, 0.18)
-	sound_streams["start"] = _make_tone(520.0, 1180.0, 0.22, 0.24)
+	sound_streams["shoot"] = ToneFactoryScript.make_tone(920.0, 520.0, 0.075, 0.24)
+	sound_streams["brick"] = ToneFactoryScript.make_tone(180.0, 82.0, 0.13, 0.30)
+	sound_streams["bonus"] = ToneFactoryScript.make_tone(540.0, 1040.0, 0.16, 0.22)
+	sound_streams["empty"] = ToneFactoryScript.make_tone(190.0, 150.0, 0.11, 0.20)
+	sound_streams["blocked"] = ToneFactoryScript.make_tone(250.0, 95.0, 0.16, 0.24)
+	sound_streams["count"] = ToneFactoryScript.make_tone(720.0, 720.0, 0.08, 0.18)
+	sound_streams["start"] = ToneFactoryScript.make_tone(520.0, 1180.0, 0.22, 0.24)
 	for key in sound_streams.keys():
 		var player := AudioStreamPlayer.new()
 		player.stream = sound_streams[key]
 		player.volume_db = -10.0
 		add_child(player)
 		sound_players[key] = player
-
-func _make_tone(start_hz: float, end_hz: float, duration: float, volume: float) -> AudioStreamWAV:
-	var sample_rate := 44100
-	var sample_count := int(duration * float(sample_rate))
-	var bytes := PackedByteArray()
-	bytes.resize(sample_count * 2)
-	var phase := 0.0
-	for i in range(sample_count):
-		var t := float(i) / maxf(1.0, float(sample_count - 1))
-		var hz := lerpf(start_hz, end_hz, t)
-		phase += TAU * hz / float(sample_rate)
-		var envelope := pow(1.0 - t, 1.8)
-		var sample := sin(phase) * envelope * volume
-		if start_hz < 250.0:
-			sample += sin(phase * 0.47) * envelope * volume * 0.55
-		var pcm := int(clampf(sample, -1.0, 1.0) * 32767.0)
-		if pcm < 0:
-			pcm += 65536
-		bytes[i * 2] = pcm & 0xff
-		bytes[i * 2 + 1] = (pcm >> 8) & 0xff
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = sample_rate
-	stream.stereo = false
-	stream.data = bytes
-	return stream
 
 func _play_sound(kind: String) -> void:
 	var player = sound_players.get(kind, null)
@@ -948,62 +879,7 @@ func _update_ammo_empty_feedback(delta: float) -> void:
 	ammo_empty_pulse = 0.0
 
 func _get_render_state() -> Dictionary:
-	if state_buffer.is_empty():
-		return current_state
-	if state_buffer.size() == 1:
-		return state_buffer[0]
-
-	var target_time: float = Time.get_ticks_msec() * 0.001 - SNAPSHOT_INTERPOLATION_DELAY
-	while state_buffer.size() >= 3 and float(state_buffer[1].get("_rx", 0.0)) <= target_time:
-		state_buffer.pop_front()
-
-	var from_state: Dictionary = state_buffer[0]
-	var to_state: Dictionary = state_buffer[1]
-	var from_time: float = float(from_state.get("_rx", target_time))
-	var to_time: float = float(to_state.get("_rx", target_time))
-	if to_time <= from_time:
-		return to_state
-
-	var alpha: float = clampf((target_time - from_time) / (to_time - from_time), 0.0, 1.0)
-	return _interpolate_state(from_state, to_state, alpha)
-
-func _interpolate_state(from_state: Dictionary, to_state: Dictionary, alpha: float) -> Dictionary:
-	var output: Dictionary = to_state.duplicate(false)
-	output["balls"] = _interpolate_object_array(from_state.get("balls", []), to_state.get("balls", []), alpha, "id")
-	output["players"] = _interpolate_object_array(from_state.get("players", []), to_state.get("players", []), alpha, "role")
-	output["projectiles"] = _interpolate_object_array(from_state.get("projectiles", []), to_state.get("projectiles", []), alpha, "id")
-	output["powerups"] = _interpolate_object_array(from_state.get("powerups", []), to_state.get("powerups", []), alpha, "id")
-	return output
-
-func _interpolate_object_array(from_array: Array, to_array: Array, alpha: float, key_name: String) -> Array:
-	var output: Array = []
-	for item in to_array:
-		if typeof(item) != TYPE_DICTIONARY:
-			output.append(item)
-			continue
-		var to_object: Dictionary = item
-		var from_object: Dictionary = _find_object_by_key(from_array, key_name, to_object.get(key_name, null))
-		if from_object.is_empty():
-			output.append(to_object)
-		else:
-			output.append(_interpolate_object(from_object, to_object, alpha))
-	return output
-
-func _find_object_by_key(objects: Array, key_name: String, key_value: Variant) -> Dictionary:
-	if key_value == null:
-		return {}
-	for item in objects:
-		if typeof(item) == TYPE_DICTIONARY and item.get(key_name, null) == key_value:
-			return item
-	return {}
-
-func _interpolate_object(from_object: Dictionary, to_object: Dictionary, alpha: float) -> Dictionary:
-	var output: Dictionary = to_object.duplicate(false)
-	if from_object.has("x") and to_object.has("x"):
-		output["x"] = lerpf(float(from_object.get("x", 0.0)), float(to_object.get("x", 0.0)), alpha)
-	if from_object.has("y") and to_object.has("y"):
-		output["y"] = lerpf(float(from_object.get("y", 0.0)), float(to_object.get("y", 0.0)), alpha)
-	return output
+	return StateInterpolatorScript.get_render_state(state_buffer, current_state, SNAPSHOT_INTERPOLATION_DELAY)
 
 func _draw() -> void:
 	var fit := _fit_transform()
@@ -1013,17 +889,19 @@ func _draw() -> void:
 	draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
 	_draw_virtual()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_draw_fps_overlay()
 
 func _draw_virtual() -> void:
 	_draw_background()
 	if lobby_menu_visible:
+		_sync_editor_ui({})
 		_draw_lobby_menu()
 		return
 	visual_state = _get_render_state()
 	if visual_state.is_empty():
+		_sync_editor_ui({})
 		_draw_waiting_screen()
 		return
+	_sync_editor_ui(visual_state)
 	_draw_bricks()
 	_draw_powerups()
 	_draw_projectiles()
@@ -1031,11 +909,35 @@ func _draw_virtual() -> void:
 	_draw_players()
 	var status := str(visual_state.get("status", "waiting"))
 	if status == "waiting" or status == "countdown":
-		_draw_room_ready_overlay()
-		_draw_status_overlay()
 		return
 	_draw_hud()
 	_draw_status_overlay()
+
+func _update_editor_fps() -> void:
+	if not is_instance_valid(game_hud):
+		return
+	var latency_text := "--" if server_latency_ms < 0 else str(server_latency_ms)
+	game_hud.set_fps_text("FPS %d  %sms" % [Engine.get_frames_per_second(), latency_text])
+
+func _sync_editor_ui(state: Dictionary) -> void:
+	if not is_instance_valid(game_hud):
+		return
+	var hold_progress := 0.0
+	if room_code_hold_id != "":
+		hold_progress = clampf(room_code_hold_elapsed / ROOM_CODE_HOLD_SECONDS, 0.0, 1.0)
+	game_hud.set_room_code(room_code, hold_progress, room_code_copied_time > 0.0)
+	if state.is_empty():
+		game_hud.set_ready_state(false, "", 0, 2, 0.0)
+		game_hud.set_rematch_visible(false)
+		game_hud.set_status_text(status_message if not lobby_menu_visible else "")
+		return
+	var status := str(state.get("status", "waiting"))
+	var player_count := int(state.get("playerCount", _connected_players_from_state()))
+	var capacity := int(state.get("capacity", 2))
+	var countdown := float(state.get("countdown", 0.0))
+	game_hud.set_ready_state(status == "waiting" or status == "countdown", status, player_count, capacity, countdown)
+	game_hud.set_rematch_visible(status == "ended")
+	game_hud.set_status_text("")
 
 func _draw_background() -> void:
 	if tex_space_bg:
@@ -1068,43 +970,6 @@ func _draw_lobby_menu() -> void:
 	_draw_menu_button(_lobby_join_paste_rect(), "COLLER", Color(0.10, 0.20, 0.28, 0.92), false)
 	_draw_menu_button(_lobby_join_rect(), "REJOINDRE", Color(0.48, 0.14, 0.34, 0.92), true)
 
-func _draw_room_code_chip() -> void:
-	if room_code == "":
-		return
-	var rect := _room_code_copy_rect()
-	var progress := 0.0
-	if room_code_hold_id != "":
-		progress = clampf(room_code_hold_elapsed / ROOM_CODE_HOLD_SECONDS, 0.0, 1.0)
-	var copied := room_code_copied_time > 0.0
-	var fill := Color(0.04, 0.16, 0.22, 0.88)
-	if copied:
-		fill = Color(0.05, 0.34, 0.20, 0.92)
-	draw_rect(rect, fill, true)
-	draw_rect(rect, Color(0.75, 0.95, 1.0, 0.36), false, 2.0)
-	if progress > 0.0 and not copied:
-		draw_rect(Rect2(rect.position, Vector2(rect.size.x * progress, rect.size.y)), Color(0.3, 0.82, 1.0, 0.24), true)
-	var label := "COPIE" if copied else room_code
-	_draw_centered_text(label, rect.get_center() + Vector2(0, 7), 18, Color(1, 1, 1, 0.96))
-
-func _draw_room_ready_overlay() -> void:
-	var status := str(visual_state.get("status", "waiting"))
-	var player_count := int(visual_state.get("playerCount", _connected_players_from_state()))
-	var capacity := int(visual_state.get("capacity", 2))
-	var countdown := float(visual_state.get("countdown", 0.0))
-	var rect := Rect2(WORLD_W * 0.5 - 142.0, WORLD_H * 0.5 - 78.0, 284.0, 156.0)
-	draw_rect(rect, Color(0.02, 0.025, 0.033, 0.82), true)
-	draw_rect(rect, Color(0.75, 0.95, 1.0, 0.30), false, 2.0)
-	var fill_width := rect.size.x * clampf(float(player_count) / maxf(1.0, float(capacity)), 0.0, 1.0)
-	draw_rect(Rect2(rect.position, Vector2(fill_width, rect.size.y)), Color(0.09, 0.34, 0.48, 0.25), true)
-	if status == "countdown":
-		var seconds: int = max(1, int(ceil(countdown)))
-		_draw_centered_text("%d" % seconds, rect.get_center() + Vector2(0, 7), 74, Color(1, 1, 1, 0.98))
-		_draw_centered_text("START", rect.get_center() + Vector2(0, 57), 18, Color(0.76, 0.92, 1.0, 0.88))
-		return
-	_draw_centered_text("%d/%d" % [player_count, capacity], rect.get_center() + Vector2(0, -2), 56, Color(1, 1, 1, 0.98))
-	var sub := "EN ATTENTE"
-	_draw_centered_text(sub, rect.get_center() + Vector2(0, 50), 18, Color(0.76, 0.92, 1.0, 0.88))
-
 func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> void:
 	draw_rect(rect, fill, true)
 	draw_rect(rect, Color(0.75, 0.95, 1.0, 0.42 if strong else 0.26), false, 2.0)
@@ -1114,7 +979,6 @@ func _draw_waiting_screen() -> void:
 	var font := ui_font
 	_draw_centered_text("BREAKSHOT", Vector2(WORLD_W * 0.5, 315), 54, Color(1, 1, 1, 1))
 	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 372), 22, Color(0.75, 0.85, 1.0, 1))
-	_draw_room_code_chip()
 	var box := Rect2(70, 465, WORLD_W - 140, 300)
 	draw_rect(box, Color(0, 0, 0, 0.34), true)
 	draw_rect(box, Color(1, 1, 1, 0.18), false, 2.0)
@@ -1273,26 +1137,14 @@ func _draw_move_limit_bar() -> void:
 	draw_circle(Vector2(WORLD_W - 36.0, MOVE_BAR_Y), 8.0, Color(0.72, 0.92, 1.0, 0.72))
 
 func _draw_status_overlay() -> void:
-	var font := ui_font
 	var status := str(visual_state.get("status", "waiting"))
 	var winner := int(visual_state.get("winner", -1))
-	_draw_room_code_chip()
 	if status == "ended":
 		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(0, 0, 0, 0.68), true)
 		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(1, 1, 1, 0.24), false, 2.0)
 		var result_text := "VICTOIRE" if winner == my_role else "DEFAITE"
 		_draw_centered_text(result_text, Vector2(WORLD_W * 0.5, 530), 48, Color(1, 1, 1, 1))
-		_draw_menu_button(_rematch_button_rect(), "REVANCHE", Color(0.38, 0.08, 0.14, 0.95), true)
 	return
-
-func _draw_fps_overlay() -> void:
-	var font := ui_font
-	var latency_text := "--" if server_latency_ms < 0 else str(server_latency_ms)
-	var fps_text := "FPS %d  %sms" % [Engine.get_frames_per_second(), latency_text]
-	var rect := Rect2(10, 10, 142, 28)
-	draw_rect(rect, Color(0, 0, 0, 0.58), true)
-	draw_rect(rect, Color(1, 1, 1, 0.18), false, 1.0)
-	draw_string(font, Vector2(rect.position.x + 9, rect.position.y + 20), fps_text, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 18, 15, Color(0.90, 1.0, 0.82, 0.96))
 
 func _draw_atlas_region(source: Rect2, rect: Rect2, rotate_180: bool, color: Color) -> void:
 	if rotate_180:
@@ -1499,15 +1351,6 @@ func _lobby_join_paste_rect() -> Rect2:
 
 func _lobby_join_rect() -> Rect2:
 	return Rect2(116.0, 700.0, WORLD_W - 232.0, 72.0)
-
-func _room_code_copy_rect() -> Rect2:
-	return Rect2(24.0, 26.0, 140.0, 42.0)
-
-func _rematch_button_rect() -> Rect2:
-	return Rect2(WORLD_W * 0.5 - 150.0, 565.0, 300.0, 64.0)
-
-func _rematch_button_visible() -> bool:
-	return str(current_state.get("status", "")) == "ended"
 
 func _fire_button_rect() -> Rect2:
 	return Rect2(18.0, WORLD_H * 0.5 - 74.0, 148.0, 148.0)
