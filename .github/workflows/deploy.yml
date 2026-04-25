@@ -29,18 +29,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip
 
+      - name: Cache Godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/breakshot-godot/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}
+          key: godot-${{ runner.os }}-${{ env.GODOT_VERSION }}-${{ env.GODOT_RELEASE }}
+
       - name: Install Godot and export templates
         run: |
           set -euo pipefail
           GODOT_BASE="Godot_v${GODOT_VERSION}-${GODOT_RELEASE}"
-          curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_linux.x86_64.zip" -o godot.zip
-          unzip -q godot.zip
-          sudo mv "${GODOT_BASE}_linux.x86_64" /usr/local/bin/godot
+          CACHE_DIR="${HOME}/.cache/breakshot-godot"
+          GODOT_BIN="${CACHE_DIR}/godot"
+          TEMPLATE_DIR="${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_DIR}"
+
+          mkdir -p "${CACHE_DIR}"
+          if [ ! -x "${GODOT_BIN}" ]; then
+            curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_linux.x86_64.zip" -o godot.zip
+            unzip -q godot.zip
+            mv "${GODOT_BASE}_linux.x86_64" "${GODOT_BIN}"
+            chmod +x "${GODOT_BIN}"
+          fi
+          sudo cp "${GODOT_BIN}" /usr/local/bin/godot
           sudo chmod +x /usr/local/bin/godot
 
-          curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_export_templates.tpz" -o templates.tpz
-          mkdir -p "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_DIR}"
-          unzip -q -j templates.tpz "templates/*" -d "${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_DIR}"
+          mkdir -p "${TEMPLATE_DIR}"
+          if [ -z "$(find "${TEMPLATE_DIR}" -mindepth 1 -print -quit)" ]; then
+            curl -L "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/${GODOT_BASE}_export_templates.tpz" -o templates.tpz
+            unzip -q -j templates.tpz "templates/*" -d "${TEMPLATE_DIR}"
+          fi
           godot --version
 
       - name: Validate server
