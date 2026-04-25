@@ -38,16 +38,16 @@ const ATLAS_BRICK_RED: Rect2 = Rect2(608, 80, 64, 24)
 const ATLAS_SHIELD_SEGMENT_BLUE: Rect2 = Rect2(672, 8, 64, 18)
 const ATLAS_SHIELD_SEGMENT_RED: Rect2 = Rect2(464, 80, 64, 18)
 const ATLAS_BALL_MAIN: Rect2 = Rect2(160, 152, 32, 32)
-const ATLAS_SHIP_BLUE: Rect2 = Rect2(496, 8, 64, 40)
-const ATLAS_SHIP_RED: Rect2 = Rect2(288, 80, 64, 40)
+const ATLAS_SHIP_BLUE: Rect2 = Rect2(496, 8, 80, 64)
+const ATLAS_SHIP_RED: Rect2 = Rect2(288, 80, 80, 64)
 const ATLAS_TURRET_BLUE: Rect2 = Rect2(568, 8, 40, 40)
 const ATLAS_TURRET_RED: Rect2 = Rect2(360, 80, 40, 40)
 const ATLAS_SHIELD_BUBBLE_BLUE: Rect2 = Rect2(744, 8, 64, 64)
 const ATLAS_SHIELD_BUBBLE_RED: Rect2 = Rect2(536, 80, 64, 64)
-const ATLAS_BULLET_BLUE: Rect2 = Rect2(336, 152, 34, 12)
-const ATLAS_BULLET_RED: Rect2 = Rect2(670, 152, 34, 12)
-const ATLAS_HEAVY_BLUE: Rect2 = Rect2(378, 152, 44, 18)
-const ATLAS_HEAVY_RED: Rect2 = Rect2(712, 152, 44, 18)
+const ATLAS_BULLET_BLUE: Rect2 = Rect2(336, 152, 18, 36)
+const ATLAS_BULLET_RED: Rect2 = Rect2(670, 152, 18, 36)
+const ATLAS_HEAVY_BLUE: Rect2 = Rect2(378, 152, 18, 36)
+const ATLAS_HEAVY_RED: Rect2 = Rect2(712, 152, 18, 36)
 const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
@@ -1366,10 +1366,10 @@ func _draw_projectiles() -> void:
 		var owner := int(proj.get("owner", -1))
 		var is_local := owner == my_role
 		var source := ATLAS_HEAVY_BLUE if is_local else ATLAS_HEAVY_RED
-		var rect := Rect2(pos.x - 26.0, pos.y - 11.0, 52.0, 22.0)
+		var rect := Rect2(pos.x - 9.0, pos.y - 18.0, 18.0, 36.0)
 		var vx := float(proj.get("vx", 0.0))
 		var vy := float(proj.get("vy", -1.0 if is_local else 1.0))
-		var angle := atan2(vy, vx)
+		var angle := atan2(vy, vx) + PI * 0.5
 		_draw_atlas_region_rotated(source, rect, angle, Color(1, 1, 1, 0.98))
 
 func _draw_balls() -> void:
@@ -1402,7 +1402,7 @@ func _draw_players() -> void:
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
 		var rotate_180 := not is_local
 		_draw_player_bonus_effects(player, pos, is_local)
-		_draw_atlas_region(ship_src, Rect2(pos.x - 58.0, pos.y - 24.0, 116.0, 48.0), rotate_180, Color(1, 1, 1, 0.98))
+		_draw_atlas_region(ship_src, Rect2(pos.x - 46.0, pos.y - 37.0, 92.0, 74.0), rotate_180, Color(1, 1, 1, 0.98))
 		if bool(player.get("protected", false)):
 			var bubble_src := ATLAS_SHIELD_BUBBLE_BLUE if is_local else ATLAS_SHIELD_BUBBLE_RED
 			_draw_atlas_region(bubble_src, Rect2(pos.x - 76.0, pos.y - 76.0, 152.0, 152.0), false, Color(1, 1, 1, 0.7))
