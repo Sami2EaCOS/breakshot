@@ -885,6 +885,7 @@ func _draw() -> void:
 	var fit := _fit_transform()
 	draw_fit_offset = fit["offset"]
 	draw_fit_scale = fit["scale"]
+	_layout_editor_ui()
 	draw_rect(Rect2(Vector2.ZERO, get_viewport_rect().size), Color(0.02, 0.025, 0.035, 1.0))
 	draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
 	_draw_virtual()
@@ -918,6 +919,13 @@ func _update_editor_fps() -> void:
 		return
 	var latency_text := "--" if server_latency_ms < 0 else str(server_latency_ms)
 	game_hud.set_fps_text("FPS %d  %sms" % [Engine.get_frames_per_second(), latency_text])
+
+func _layout_editor_ui() -> void:
+	if not is_instance_valid(game_hud):
+		return
+	game_hud.position = draw_fit_offset
+	game_hud.scale = Vector2(draw_fit_scale, draw_fit_scale)
+	game_hud.size = WORLD_SIZE
 
 func _sync_editor_ui(state: Dictionary) -> void:
 	if not is_instance_valid(game_hud):
