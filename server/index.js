@@ -119,7 +119,8 @@ function segmentCircleCollision(x1, y1, x2, y2, cx, cy, r) {
 
 function normalizeBall(ball, room = null) {
   const ballRules = room && room.rules ? room.rules.ball : cloneDefaultRules().ball;
-  const speed = Math.hypot(ball.vx, ball.vy) || ballRules.minSpeed;
+  const speed = Math.hypot(ball.vx, ball.vy);
+  if (speed <= 0.0001) return;
   let target = speed;
   if (speed < ballRules.minSpeed) target = ballRules.minSpeed;
   if (speed > ballRules.maxSpeed) target = ballRules.maxSpeed;

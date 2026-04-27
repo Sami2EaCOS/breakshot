@@ -12,7 +12,7 @@ const PLAYER_W = 118;
 const PLAYER_H = 34;
 const PLAYER_Y = [1164, 139];
 const BALL_R = 17;
-const BALL_MIN_SPEED = 390;
+const BALL_MIN_SPEED = 0;
 const BALL_MAX_SPEED = 920;
 const POWERUP_CHANCE = 0.36;
 const POWERUP_SPEED = 165;
@@ -30,7 +30,7 @@ const WALL_Y = {
 };
 
 const WEAPONS = {
-  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 1120, radius: 9, impact: 1.15, semi: false }
+  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 2240, radius: 9, impact: 1.15, semi: false }
 };
 const WEAPON_ORDER = Object.keys(WEAPONS);
 const POWER_KINDS = ['shield', 'rapid', 'split'];
@@ -104,7 +104,7 @@ function sanitizeRules(input = {}) {
   rules.player.speed = cleanNumber(player.speed, defaults.player.speed, 180, 1800);
 
   rules.ball.radius = cleanNumber(ball.radius, defaults.ball.radius, 5, 56);
-  rules.ball.minSpeed = cleanNumber(ball.minSpeed, defaults.ball.minSpeed, 120, 1600);
+  rules.ball.minSpeed = cleanNumber(ball.minSpeed, defaults.ball.minSpeed, 0, 1600);
   rules.ball.maxSpeed = cleanNumber(ball.maxSpeed, defaults.ball.maxSpeed, rules.ball.minSpeed, 2400);
   rules.ball.serveSpeedMin = cleanNumber(ball.serveSpeedMin, defaults.ball.serveSpeedMin, rules.ball.minSpeed, rules.ball.maxSpeed);
   rules.ball.serveSpeedMax = cleanNumber(ball.serveSpeedMax, defaults.ball.serveSpeedMax, rules.ball.serveSpeedMin, rules.ball.maxSpeed);
