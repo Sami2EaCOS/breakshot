@@ -784,12 +784,12 @@ func _pointer_down(id, pos: Vector2) -> void:
 	_send_input()
 
 func _pointer_move(id, pos: Vector2) -> void:
+	if move_touches.has(id):
+		touch_target_x = clampf(pos.x, 40.0, WORLD_W - 40.0)
+		_send_input()
+		return
 	var action := _action_at_pos(pos)
 	if action != "":
-		if move_touches.has(id):
-			move_touches.erase(id)
-			if move_touches.size() == 0:
-				touch_target_x = -1.0
 		if fire_touches.has(id):
 			fire_touches.erase(id)
 		if str(action_touches.get(id, "")) != action:
@@ -800,17 +800,7 @@ func _pointer_move(id, pos: Vector2) -> void:
 		return
 	if action_touches.has(id):
 		action_touches.erase(id)
-	if move_touches.has(id):
-		if _is_move_zone(pos):
-			touch_target_x = clampf(pos.x, 40.0, WORLD_W - 40.0)
-		else:
-			move_touches.erase(id)
-			if move_touches.size() == 0:
-				touch_target_x = -1.0
-			_play_fire_blocked_sound_if_needed()
-			fire_touches[id] = true
-		_send_input()
-	elif fire_touches.has(id):
+	if fire_touches.has(id):
 		_send_input()
 	elif not _is_move_zone(pos):
 		_play_fire_blocked_sound_if_needed()
