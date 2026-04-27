@@ -2,6 +2,7 @@
 .godot/
 server/node_modules/
 docs/image_prompts_refs/*.import
+web_export/*.import
 
 *.tmp
 *.log

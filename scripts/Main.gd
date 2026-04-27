@@ -44,6 +44,12 @@ var tex_space_bg: Texture2D
 var tex_fx_shield: Texture2D
 var tex_fx_rapid: Texture2D
 var tex_fx_split: Texture2D
+var tex_pixel_ball: Texture2D
+var tex_pixel_platform_blue: Texture2D
+var tex_pixel_platform_red: Texture2D
+var tex_pixel_shot_blue: Texture2D
+var tex_pixel_shot_red: Texture2D
+var tex_pixel_title: Texture2D
 const ATLAS_BRICK_BLUE: Rect2 = Rect2(816, 8, 64, 24)
 const ATLAS_BRICK_RED: Rect2 = Rect2(608, 80, 64, 24)
 const ATLAS_SHIELD_SEGMENT_BLUE: Rect2 = Rect2(672, 8, 64, 18)
@@ -62,6 +68,13 @@ const ATLAS_HEAVY_RED: Rect2 = Rect2(712, 152, 18, 36)
 const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
+const PIXEL_BALL_SRC: Rect2 = Rect2(9, 5, 50, 51)
+const PIXEL_BALL_CORE: Vector2 = Vector2(24, 42)
+const PIXEL_BALL_FORWARD_ANGLE: float = deg_to_rad(135.0)
+const PIXEL_BALL_CORE_DIAMETER: float = 24.0
+const PIXEL_PLATFORM_SRC: Rect2 = Rect2(2, 27, 61, 12)
+const PIXEL_SHOT_SRC: Rect2 = Rect2(28, 10, 8, 44)
+const PIXEL_TITLE_SRC: Rect2 = Rect2(6, 47, 117, 30)
 const UI_FIRE_IDLE: Rect2 = Rect2(8, 8, 176, 176)
 const UI_FIRE_PRESSED: Rect2 = Rect2(200, 8, 176, 176)
 const UI_RING_FRAME_SIZE: float = 384.0
@@ -174,6 +187,12 @@ func _load_effect_assets() -> void:
 	tex_fx_shield = load("res://assets/effects/fx_shield_ring.png")
 	tex_fx_rapid = load("res://assets/effects/fx_rapid_trail.png")
 	tex_fx_split = load("res://assets/effects/fx_split_ghost.png")
+	tex_pixel_ball = load("res://assets/game/pixel/p-ball.png")
+	tex_pixel_platform_blue = load("res://assets/game/pixel/p-platform-blue.png")
+	tex_pixel_platform_red = load("res://assets/game/pixel/p-platform-red.png")
+	tex_pixel_shot_blue = load("res://assets/game/pixel/p-shot-blue.png")
+	tex_pixel_shot_red = load("res://assets/game/pixel/p-shot-red.png")
+	tex_pixel_title = load("res://assets/game/pixel/p-title.png")
 
 func _process(delta: float) -> void:
 	_poll_socket()
@@ -952,7 +971,7 @@ func _sync_editor_ui(state: Dictionary) -> void:
 
 func _draw_background() -> void:
 	if tex_space_bg:
-		draw_texture_rect(tex_space_bg, Rect2(0, 0, WORLD_W, WORLD_H), false, Color(1, 1, 1, 1))
+		draw_texture_rect(tex_space_bg, Rect2(0, 0, WORLD_W, WORLD_H), true, Color(1, 1, 1, 1))
 	else:
 		draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.02, 0.025, 0.045, 1.0))
 	for i in range(0, int(WORLD_H), 128):
@@ -968,7 +987,7 @@ func _draw_lobby_menu() -> void:
 	var panel := _lobby_panel_rect()
 	draw_rect(panel, Color(0.025, 0.035, 0.05, 0.92), true)
 	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.24), false, 2.0)
-	_draw_centered_text("BREAKSHOT", Vector2(WORLD_W * 0.5, panel.position.y + 68.0), 54, Color(1, 1, 1, 1))
+	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 70.0), 300.0)
 	_draw_centered_text("ROOMS", Vector2(WORLD_W * 0.5, panel.position.y + 116.0), 22, Color(0.72, 0.9, 1.0, 0.92))
 	_draw_menu_button(_lobby_create_rect(), "CREER UNE ROOM", Color(0.06, 0.42, 0.62, 0.92), true)
 	_draw_menu_button(_lobby_quick_rect(), "QUICK MATCH", Color(0.10, 0.34, 0.22, 0.92), true)
@@ -986,7 +1005,7 @@ func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> 
 
 func _draw_waiting_screen() -> void:
 	var font := ui_font
-	_draw_centered_text("BREAKSHOT", Vector2(WORLD_W * 0.5, 315), 54, Color(1, 1, 1, 1))
+	_draw_title_image(Vector2(WORLD_W * 0.5, 315), 320.0)
 	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 372), 22, Color(0.75, 0.85, 1.0, 1))
 	var box := Rect2(70, 465, WORLD_W - 140, 300)
 	draw_rect(box, Color(0, 0, 0, 0.34), true)
@@ -1018,8 +1037,8 @@ func _draw_bricks() -> void:
 		var rect := _world_rect_to_local(Rect2(float(brick.get("x", 0.0)), float(brick.get("y", 0.0)), float(brick.get("w", 80.0)), float(brick.get("h", 28.0))))
 		var is_local := owner == my_role
 		var protected := bool(brick.get("protected", false))
-		var brick_src := ATLAS_BRICK_BLUE if is_local else ATLAS_BRICK_RED
-		_draw_atlas_region(brick_src, rect, not is_local, Color(1, 1, 1, 1))
+		var platform_texture := tex_pixel_platform_blue if is_local else tex_pixel_platform_red
+		_draw_texture_region_contain(platform_texture, PIXEL_PLATFORM_SRC, rect, PI if not is_local else 0.0, Color(1, 1, 1, 1))
 		if protected:
 			var shield_src := ATLAS_SHIELD_SEGMENT_BLUE if is_local else ATLAS_SHIELD_SEGMENT_RED
 			_draw_atlas_region(shield_src, rect.grow(2), not is_local, Color(1, 1, 1, 0.9))
@@ -1054,12 +1073,12 @@ func _draw_projectiles() -> void:
 		var ptype := str(proj.get("kind", "sniper"))
 		var owner := int(proj.get("owner", -1))
 		var is_local := owner == my_role
-		var source := ATLAS_HEAVY_BLUE if is_local else ATLAS_HEAVY_RED
-		var rect := Rect2(pos.x - 9.0, pos.y - 18.0, 18.0, 36.0)
+		var shot_texture := tex_pixel_shot_blue if is_local else tex_pixel_shot_red
+		var rect := Rect2(pos.x - 7.0, pos.y - 38.5, 14.0, 77.0)
 		var vx := float(proj.get("vx", 0.0))
 		var vy := float(proj.get("vy", -1.0 if is_local else 1.0))
 		var angle := atan2(vy, vx) + PI * 0.5
-		_draw_atlas_region_rotated(source, rect, angle, Color(1, 1, 1, 0.98))
+		_draw_texture_region_contain(shot_texture, PIXEL_SHOT_SRC, rect, angle, Color(1, 1, 1, 0.98))
 
 func _draw_balls() -> void:
 	var balls: Array = visual_state.get("balls", [])
@@ -1075,8 +1094,14 @@ func _draw_balls() -> void:
 func _draw_ball_object(ball: Dictionary) -> void:
 	var pos := _world_to_local(Vector2(float(ball.get("x", WORLD_W * 0.5)), float(ball.get("y", WORLD_H * 0.5))))
 	var r := float(ball.get("r", 16.0))
-	var rect := Rect2(pos.x - r, pos.y - r, r * 2.0, r * 2.0)
-	_draw_atlas_region_rotated(ATLAS_BALL_MAIN, rect, ball_visual_angle, Color(1, 1, 1, 1))
+	var velocity := Vector2(float(ball.get("vx", 0.0)), float(ball.get("vy", 0.0)))
+	if my_role == 1:
+		velocity.y = -velocity.y
+	var angle := ball_visual_angle
+	if velocity.length_squared() > 1.0:
+		angle = atan2(velocity.y, velocity.x) - PIXEL_BALL_FORWARD_ANGLE
+	var scale := (r * 2.0) / PIXEL_BALL_CORE_DIAMETER
+	_draw_texture_region_pivoted(tex_pixel_ball, PIXEL_BALL_SRC, PIXEL_BALL_CORE, pos, scale, angle, Color(1, 1, 1, 1))
 
 func _draw_players() -> void:
 	var players: Array = visual_state.get("players", [])
@@ -1169,6 +1194,43 @@ func _draw_atlas_region_rotated(source: Rect2, rect: Rect2, angle: float, color:
 
 func _draw_button_region(source: Rect2, rect: Rect2, color: Color) -> void:
 	draw_texture_rect_region(TEX_BUTTON_ATLAS, rect, source, color)
+
+func _draw_texture_region_contain(texture: Texture2D, source: Rect2, rect: Rect2, angle: float, color: Color) -> void:
+	if texture == null:
+		return
+	var source_ratio := source.size.x / maxf(1.0, source.size.y)
+	var target_size := rect.size
+	if target_size.x / maxf(1.0, target_size.y) > source_ratio:
+		target_size.x = target_size.y * source_ratio
+	else:
+		target_size.y = target_size.x / source_ratio
+	var target := Rect2(rect.get_center() - target_size * 0.5, target_size)
+	if absf(angle) > 0.0001:
+		var center := draw_fit_offset + target.get_center() * draw_fit_scale
+		draw_set_transform(center, angle, Vector2(draw_fit_scale, draw_fit_scale))
+		draw_texture_rect_region(texture, Rect2(-target.size * 0.5, target.size), source, color)
+		draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
+	else:
+		draw_texture_rect_region(texture, target, source, color)
+
+func _draw_texture_region_pivoted(texture: Texture2D, source: Rect2, pivot_in_texture: Vector2, pivot_target: Vector2, scale: float, angle: float, color: Color) -> void:
+	if texture == null:
+		return
+	var source_pivot := pivot_in_texture - source.position
+	var top_left := -source_pivot * scale
+	var draw_rect := Rect2(top_left, source.size * scale)
+	var center := draw_fit_offset + pivot_target * draw_fit_scale
+	draw_set_transform(center, angle, Vector2(draw_fit_scale, draw_fit_scale))
+	draw_texture_rect_region(texture, draw_rect, source, color)
+	draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
+
+func _draw_title_image(center: Vector2, width: float) -> void:
+	if tex_pixel_title == null:
+		_draw_centered_text("BREAKSHOT", center + Vector2(0, 18), 54, Color(1, 1, 1, 1))
+		return
+	var height := width * PIXEL_TITLE_SRC.size.y / PIXEL_TITLE_SRC.size.x
+	var rect := Rect2(center.x - width * 0.5, center.y - height * 0.5, width, height)
+	draw_texture_rect_region(tex_pixel_title, rect, PIXEL_TITLE_SRC, Color(1, 1, 1, 1))
 
 func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool) -> void:
 	var rapid_time := float(player.get("rapid", 0.0))

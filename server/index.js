@@ -925,6 +925,8 @@ function ballSnapshot(ball) {
     id: ball.id,
     x: Math.round(ball.x * 10) / 10,
     y: Math.round(ball.y * 10) / 10,
+    vx: Math.round(ball.vx * 10) / 10,
+    vy: Math.round(ball.vy * 10) / 10,
     r: ball.r
   };
 }
