@@ -30,7 +30,7 @@ const WALL_Y = {
 };
 
 const WEAPONS = {
-  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 2240, radius: 9, impact: 1.15, semi: false }
+  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 2240, radius: 9, impact: 0.575, semi: false }
 };
 const WEAPON_ORDER = Object.keys(WEAPONS);
 const POWER_KINDS = ['shield', 'rapid', 'split'];
