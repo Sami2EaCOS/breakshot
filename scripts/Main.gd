@@ -69,6 +69,7 @@ const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
 const PIXEL_BALL_SRC: Rect2 = Rect2(9, 5, 50, 51)
+const PIXEL_BALL_IDLE_SRC: Rect2 = Rect2(8, 29, 30, 29)
 const PIXEL_BALL_CORE: Vector2 = Vector2(24, 42)
 const PIXEL_BALL_FORWARD_ANGLE: float = deg_to_rad(135.0)
 const PIXEL_BALL_CORE_DIAMETER: float = 24.0
@@ -971,7 +972,8 @@ func _sync_editor_ui(state: Dictionary) -> void:
 
 func _draw_background() -> void:
 	if tex_space_bg:
-		draw_texture_rect(tex_space_bg, Rect2(0, 0, WORLD_W, WORLD_H), true, Color(1, 1, 1, 1))
+		var source := Rect2(0, 0, tex_space_bg.get_width() * 0.5, tex_space_bg.get_height())
+		_draw_texture_region_cover(tex_space_bg, source, Rect2(0, 0, WORLD_W, WORLD_H), Color(1, 1, 1, 1))
 	else:
 		draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.02, 0.025, 0.045, 1.0))
 	for i in range(0, int(WORLD_H), 128):
@@ -1098,10 +1100,12 @@ func _draw_ball_object(ball: Dictionary) -> void:
 	if my_role == 1:
 		velocity.y = -velocity.y
 	var angle := ball_visual_angle
+	var source := PIXEL_BALL_IDLE_SRC
 	if velocity.length_squared() > 1.0:
+		source = PIXEL_BALL_SRC
 		angle = atan2(velocity.y, velocity.x) - PIXEL_BALL_FORWARD_ANGLE
 	var scale := (r * 2.0) / PIXEL_BALL_CORE_DIAMETER
-	_draw_texture_region_pivoted(tex_pixel_ball, PIXEL_BALL_SRC, PIXEL_BALL_CORE, pos, scale, angle, Color(1, 1, 1, 1))
+	_draw_texture_region_pivoted(tex_pixel_ball, source, PIXEL_BALL_CORE, pos, scale, angle, Color(1, 1, 1, 1))
 
 func _draw_players() -> void:
 	var players: Array = visual_state.get("players", [])
@@ -1212,6 +1216,22 @@ func _draw_texture_region_contain(texture: Texture2D, source: Rect2, rect: Rect2
 		draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
 	else:
 		draw_texture_rect_region(texture, target, source, color)
+
+func _draw_texture_region_cover(texture: Texture2D, source: Rect2, rect: Rect2, color: Color) -> void:
+	if texture == null:
+		return
+	var source_ratio := source.size.x / maxf(1.0, source.size.y)
+	var target_ratio := rect.size.x / maxf(1.0, rect.size.y)
+	var cropped := source
+	if target_ratio > source_ratio:
+		var crop_h := source.size.x / target_ratio
+		cropped.position.y += (source.size.y - crop_h) * 0.5
+		cropped.size.y = crop_h
+	else:
+		var crop_w := source.size.y * target_ratio
+		cropped.position.x += (source.size.x - crop_w) * 0.5
+		cropped.size.x = crop_w
+	draw_texture_rect_region(texture, rect, cropped, color)
 
 func _draw_texture_region_pivoted(texture: Texture2D, source: Rect2, pivot_in_texture: Vector2, pivot_target: Vector2, scale: float, angle: float, color: Color) -> void:
 	if texture == null:
