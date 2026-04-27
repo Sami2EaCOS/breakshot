@@ -45,6 +45,7 @@ var tex_fx_shield: Texture2D
 var tex_fx_rapid: Texture2D
 var tex_fx_split: Texture2D
 var tex_pixel_ball: Texture2D
+var tex_pixel_ball_slow: Texture2D
 var tex_pixel_platform_blue: Texture2D
 var tex_pixel_platform_red: Texture2D
 var tex_pixel_shot_blue: Texture2D
@@ -69,10 +70,11 @@ const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
 const PIXEL_BALL_SRC: Rect2 = Rect2(9, 5, 50, 51)
-const PIXEL_BALL_IDLE_SRC: Rect2 = Rect2(8, 29, 30, 29)
+const PIXEL_BALL_SLOW_SRC: Rect2 = Rect2(13, 31, 22, 22)
 const PIXEL_BALL_CORE: Vector2 = Vector2(24, 42)
 const PIXEL_BALL_FORWARD_ANGLE: float = deg_to_rad(135.0)
 const PIXEL_BALL_CORE_DIAMETER: float = 24.0
+const PIXEL_BALL_TRAIL_MIN_SPEED: float = 90.0
 const PIXEL_PLATFORM_SRC: Rect2 = Rect2(2, 27, 61, 12)
 const PIXEL_SHOT_SRC: Rect2 = Rect2(28, 10, 8, 44)
 const PIXEL_TITLE_SRC: Rect2 = Rect2(6, 47, 117, 30)
@@ -141,12 +143,11 @@ var ping_timer := 0.0
 var ping_seq := 0
 var pending_pings: Dictionary = {}
 var server_latency_ms := -1
-var ball_visual_angle := 0.0
-
 @onready var game_hud: Control = $GameHud
 
 func _ready() -> void:
 	set_process(true)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ui_font = get_theme_default_font()
 	_load_effect_assets()
 	_wire_editor_ui()
@@ -189,6 +190,7 @@ func _load_effect_assets() -> void:
 	tex_fx_rapid = load("res://assets/effects/fx_rapid_trail.png")
 	tex_fx_split = load("res://assets/effects/fx_split_ghost.png")
 	tex_pixel_ball = load("res://assets/game/pixel/p-ball.png")
+	tex_pixel_ball_slow = load("res://assets/game/pixel/p-ball-slow.png")
 	tex_pixel_platform_blue = load("res://assets/game/pixel/p-platform-blue.png")
 	tex_pixel_platform_red = load("res://assets/game/pixel/p-platform-red.png")
 	tex_pixel_shot_blue = load("res://assets/game/pixel/p-shot-blue.png")
@@ -201,7 +203,6 @@ func _process(delta: float) -> void:
 	_update_room_code_hold(delta)
 	_update_lobby_clipboard_paste(delta)
 	_update_ammo_empty_feedback(delta)
-	ball_visual_angle = fposmod(ball_visual_angle - TAU * 0.55 * delta, TAU)
 	fire_blocked_sound_cooldown = maxf(0.0, fire_blocked_sound_cooldown - delta)
 	_update_server_ping(delta)
 	room_code_copied_time = maxf(0.0, room_code_copied_time - delta)
@@ -990,7 +991,6 @@ func _draw_lobby_menu() -> void:
 	draw_rect(panel, Color(0.025, 0.035, 0.05, 0.92), true)
 	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.24), false, 2.0)
 	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 70.0), 300.0)
-	_draw_centered_text("ROOMS", Vector2(WORLD_W * 0.5, panel.position.y + 116.0), 22, Color(0.72, 0.9, 1.0, 0.92))
 	_draw_menu_button(_lobby_create_rect(), "CREER UNE ROOM", Color(0.06, 0.42, 0.62, 0.92), true)
 	_draw_menu_button(_lobby_quick_rect(), "QUICK MATCH", Color(0.10, 0.34, 0.22, 0.92), true)
 	_draw_menu_button(_lobby_bot_rect(), "SOLO BOT", Color(0.34, 0.24, 0.08, 0.92), true)
@@ -1099,13 +1099,15 @@ func _draw_ball_object(ball: Dictionary) -> void:
 	var velocity := Vector2(float(ball.get("vx", 0.0)), float(ball.get("vy", 0.0)))
 	if my_role == 1:
 		velocity.y = -velocity.y
-	var angle := ball_visual_angle
-	var source := PIXEL_BALL_IDLE_SRC
-	if velocity.length_squared() > 1.0:
+	var angle := 0.0
+	var texture := tex_pixel_ball_slow
+	var source := PIXEL_BALL_SLOW_SRC
+	if velocity.length() >= PIXEL_BALL_TRAIL_MIN_SPEED:
+		texture = tex_pixel_ball
 		source = PIXEL_BALL_SRC
 		angle = atan2(velocity.y, velocity.x) - PIXEL_BALL_FORWARD_ANGLE
 	var scale := (r * 2.0) / PIXEL_BALL_CORE_DIAMETER
-	_draw_texture_region_pivoted(tex_pixel_ball, source, PIXEL_BALL_CORE, pos, scale, angle, Color(1, 1, 1, 1))
+	_draw_texture_region_pivoted(texture, source, PIXEL_BALL_CORE, pos, scale, angle, Color(1, 1, 1, 1))
 
 func _draw_players() -> void:
 	var players: Array = visual_state.get("players", [])
