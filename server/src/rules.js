@@ -21,8 +21,8 @@ const HOLD_FIRE_INTERVAL = 0.22;
 const BRICK_COLS = 7;
 const BRICK_ROWS = 4;
 const BRICK_W = 80;
-const BRICK_H = 31;
-const BRICK_GAP = 7;
+const BRICK_H = 16;
+const BRICK_GAP = 10;
 const BRICK_X0 = (W - (BRICK_COLS * BRICK_W + (BRICK_COLS - 1) * BRICK_GAP)) / 2;
 const WALL_Y = {
   1: 228,
