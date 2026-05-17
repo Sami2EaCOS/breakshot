@@ -70,6 +70,7 @@ jobs:
           rm -rf web_export
           mkdir -p web_export
           godot --headless --path . --export-release Web web_export/index.html
+          node scripts/fix_web_export.js
 
       - name: Select deployment target
         run: |

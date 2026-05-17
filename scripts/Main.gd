@@ -1274,12 +1274,7 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 		draw_arc(pos, 94.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)
 
 func _fit_transform() -> Dictionary:
-	var screen: Vector2 = get_viewport_rect().size
-	var raw_scale: float = minf(screen.x / WORLD_W, screen.y / WORLD_H)
-	var scale: float = maxf(1.0, floorf(raw_scale))
-	var size: Vector2 = WORLD_SIZE * scale
-	var offset: Vector2 = ((screen - size) * 0.5).round()
-	return {"scale": scale, "offset": offset}
+	return {"scale": 1.0, "offset": Vector2.ZERO}
 
 func _screen_to_virtual(screen_pos: Vector2) -> Vector2:
 	var fit := _fit_transform()
