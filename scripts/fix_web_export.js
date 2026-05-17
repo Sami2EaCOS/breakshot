@@ -8,7 +8,7 @@ let html = fs.readFileSync(htmlPath, 'utf8');
 
 html = html.replace(
   /<meta name="viewport" content="[^"]*">/,
-  '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">'
+  '<meta name="viewport" content="width=360, user-scalable=no, initial-scale=1.0">'
 );
 
 html = html.replace(
@@ -29,45 +29,15 @@ body {
 
 #canvas {
 \tdisplay: block;
-\twidth: 720px;
-\theight: 1280px;
+\twidth: 360px;
+\theight: 640px;
 \timage-rendering: pixelated;
 \timage-rendering: crisp-edges;
 }`
 );
 
-html = html.replace('<canvas id="canvas">', '<canvas id="canvas" width="720" height="1280">');
+html = html.replace(/<canvas id="canvas"(?: width="\d+" height="\d+")?>/, '<canvas id="canvas" width="720" height="1280">');
 html = html.replace(/"canvasResizePolicy":\d+/, '"canvasResizePolicy":0');
-
-const fixedCanvasScript = `
-<script>
-(function () {
-\tconst BASE_W = 720;
-\tconst BASE_H = 1280;
-\tconst STEPS = [1, 0.5, 0.25];
-\tfunction resizeFixedCanvas() {
-\t\tconst canvas = document.getElementById('canvas');
-\t\tif (!canvas) return;
-\t\tconst fit = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H);
-\t\tlet scale = STEPS[STEPS.length - 1];
-\t\tfor (const candidate of STEPS) {
-\t\t\tif (candidate <= fit) {
-\t\t\t\tscale = candidate;
-\t\t\t\tbreak;
-\t\t\t}
-\t\t}
-\t\tcanvas.style.width = Math.round(BASE_W * scale) + 'px';
-\t\tcanvas.style.height = Math.round(BASE_H * scale) + 'px';
-\t}
-\twindow.addEventListener('resize', resizeFixedCanvas, { passive: true });
-\twindow.addEventListener('orientationchange', resizeFixedCanvas, { passive: true });
-\tdocument.addEventListener('DOMContentLoaded', resizeFixedCanvas);
-\tresizeFixedCanvas();
-}());
-</script>`;
-
-if (!html.includes('const BASE_W = 720;')) {
-  html = html.replace('</body>', `${fixedCanvasScript}\n\t</body>`);
-}
+html = html.replace(/\s*<script>\s*\(function \(\) \{\s*const BASE_W = 720;[\s\S]*?resizeFixedCanvas\(\);\s*\}\(\)\);\s*<\/script>/, '');
 
 fs.writeFileSync(htmlPath, html);
