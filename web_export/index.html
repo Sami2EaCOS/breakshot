@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=720, user-scalable=no, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
 		<title>Breakshot</title>
 		<style>
 html, body {
@@ -21,8 +21,8 @@ body {
 
 #canvas {
 	display: block;
-	width: min(720px, 100vw, 56.25vh) !important;
-	height: min(1280px, 177.7778vw, 100vh) !important;
+	width: 720px;
+	height: 1280px;
 	image-rendering: pixelated;
 	image-rendering: crisp-edges;
 }
@@ -220,6 +220,32 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
+	
+<script>
+(function () {
+	const BASE_W = 720;
+	const BASE_H = 1280;
+	const STEPS = [1, 0.5, 0.25];
+	function resizeFixedCanvas() {
+		const canvas = document.getElementById('canvas');
+		if (!canvas) return;
+		const fit = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H);
+		let scale = STEPS[STEPS.length - 1];
+		for (const candidate of STEPS) {
+			if (candidate <= fit) {
+				scale = candidate;
+				break;
+			}
+		}
+		canvas.style.width = Math.round(BASE_W * scale) + 'px';
+		canvas.style.height = Math.round(BASE_H * scale) + 'px';
+	}
+	window.addEventListener('resize', resizeFixedCanvas, { passive: true });
+	window.addEventListener('orientationchange', resizeFixedCanvas, { passive: true });
+	document.addEventListener('DOMContentLoaded', resizeFixedCanvas);
+	resizeFixedCanvas();
+}());
+</script>
 	</body>
 </html>
 
