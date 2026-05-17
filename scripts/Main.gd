@@ -69,7 +69,7 @@ const ATLAS_HEAVY_RED: Rect2 = Rect2(712, 152, 18, 36)
 const ATLAS_POWER_SPLIT: Rect2 = Rect2(50, 208, 36, 36)
 const ATLAS_POWER_SHIELD: Rect2 = Rect2(94, 208, 36, 36)
 const ATLAS_POWER_RAPID: Rect2 = Rect2(138, 208, 36, 36)
-const PIXEL_BALL_SRC: Rect2 = Rect2(9, 5, 50, 51)
+const PIXEL_BALL_SRC: Rect2 = Rect2(10, 6, 48, 48)
 const PIXEL_BALL_SLOW_SRC: Rect2 = Rect2(13, 31, 22, 22)
 const PIXEL_BALL_CORE: Vector2 = Vector2(24, 42)
 const PIXEL_BALL_FORWARD_ANGLE: float = deg_to_rad(135.0)
@@ -77,13 +77,13 @@ const PIXEL_BALL_CORE_DIAMETER: float = 24.0
 const PIXEL_BALL_TRAIL_MIN_SPEED: float = 180.0
 const PIXEL_PLATFORM_SRC: Rect2 = Rect2(2, 27, 60, 12)
 const PIXEL_SHOT_SRC: Rect2 = Rect2(28, 10, 8, 44)
-const PIXEL_TITLE_SRC: Rect2 = Rect2(6, 47, 117, 30)
+const PIXEL_TITLE_SRC: Rect2 = Rect2(6, 47, 116, 30)
 const UI_FIRE_IDLE: Rect2 = Rect2(8, 8, 176, 176)
 const UI_FIRE_PRESSED: Rect2 = Rect2(200, 8, 176, 176)
 const UI_RING_FRAME_SIZE: float = 192.0
 const UI_RING_FRAME_STEP: float = 400.0
 const UI_RING_START: Vector2 = Vector2(8.0, 208.0)
-const UI_WEAPON_INNER_RADIUS: float = 44.0
+const UI_WEAPON_INNER_RADIUS: float = 48.0
 const UI_WEAPON_OUTER_RADIUS: float = 92.0
 const ROOM_CODE_HOLD_SECONDS: float = 0.55
 
@@ -185,7 +185,7 @@ func _wire_editor_ui() -> void:
 	)
 
 func _load_effect_assets() -> void:
-	tex_space_bg = load("res://assets/backgrounds/space_starfield.png")
+	tex_space_bg = load("res://assets/backgrounds/space_starfield_360x640.png")
 	tex_fx_shield = load("res://assets/effects/fx_shield_ring.png")
 	tex_fx_rapid = load("res://assets/effects/fx_rapid_trail.png")
 	tex_fx_split = load("res://assets/effects/fx_split_ghost.png")
@@ -963,8 +963,8 @@ func _sync_editor_ui(state: Dictionary) -> void:
 
 func _draw_background() -> void:
 	if tex_space_bg:
-		var source := Rect2(0, 0, tex_space_bg.get_width() * 0.5, tex_space_bg.get_height())
-		_draw_texture_region_cover(tex_space_bg, source, Rect2(0, 0, WORLD_W, WORLD_H), Color(1, 1, 1, 1))
+		var source := Rect2(0, 0, tex_space_bg.get_width(), tex_space_bg.get_height())
+		draw_texture_rect_region(tex_space_bg, Rect2(0, 0, WORLD_W, WORLD_H), source, Color(1, 1, 1, 1))
 	else:
 		draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.02, 0.025, 0.045, 1.0))
 	for i in range(0, int(WORLD_H), 64):
@@ -980,7 +980,7 @@ func _draw_lobby_menu() -> void:
 	var panel := _lobby_panel_rect()
 	draw_rect(panel, Color(0.025, 0.035, 0.05, 0.92), true)
 	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.24), false, 2.0)
-	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 35.0), 150.0)
+	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 35.0), 116.0)
 	_draw_menu_button(_lobby_create_rect(), "CREER UNE ROOM", Color(0.06, 0.42, 0.62, 0.92), true)
 	_draw_menu_button(_lobby_quick_rect(), "QUICK MATCH", Color(0.10, 0.34, 0.22, 0.92), true)
 	_draw_menu_button(_lobby_bot_rect(), "SOLO BOT", Color(0.34, 0.24, 0.08, 0.92), true)
@@ -997,7 +997,7 @@ func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> 
 
 func _draw_waiting_screen() -> void:
 	var font := ui_font
-	_draw_title_image(Vector2(WORLD_W * 0.5, 158), 160.0)
+	_draw_title_image(Vector2(WORLD_W * 0.5, 158), 116.0)
 	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 186), 11, Color(0.75, 0.85, 1.0, 1))
 	var box := Rect2(35, 233, WORLD_W - 70, 150)
 	draw_rect(box, Color(0, 0, 0, 0.34), true)
@@ -1112,10 +1112,10 @@ func _draw_players() -> void:
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
 		var rotate_180 := not is_local
 		_draw_player_bonus_effects(player, pos, is_local)
-		_draw_atlas_region(ship_src, Rect2(pos.x - 23.0, pos.y - 19.0, 46.0, 38.0), rotate_180, Color(1, 1, 1, 0.98))
+		_draw_atlas_region(ship_src, Rect2(pos.x - 20.0, pos.y - 16.0, 40.0, 32.0), rotate_180, Color(1, 1, 1, 0.98))
 		if bool(player.get("protected", false)):
 			var bubble_src := ATLAS_SHIELD_BUBBLE_BLUE if is_local else ATLAS_SHIELD_BUBBLE_RED
-			_draw_atlas_region(bubble_src, Rect2(pos.x - 38.0, pos.y - 38.0, 76.0, 76.0), false, Color(1, 1, 1, 0.7))
+			_draw_atlas_region(bubble_src, Rect2(pos.x - 32.0, pos.y - 32.0, 64.0, 64.0), false, Color(1, 1, 1, 0.7))
 		if is_local and touch_target_x >= 0.0:
 			var target := Vector2(touch_target_x, pos.y)
 			draw_line(Vector2(touch_target_x, pos.y - 35.0), Vector2(touch_target_x, pos.y + 35.0), Color(1, 1, 1, 0.20), 1.0)
@@ -1177,18 +1177,21 @@ func _draw_status_overlay() -> void:
 	return
 
 func _draw_atlas_region(source: Rect2, rect: Rect2, rotate_180: bool, color: Color) -> void:
+	rect = _pixel_rect(rect)
 	if rotate_180:
 		_draw_atlas_region_rotated(source, rect, PI, color)
 		return
 	draw_texture_rect_region(TEX_ATLAS, rect, source, color)
 
 func _draw_atlas_region_rotated(source: Rect2, rect: Rect2, angle: float, color: Color) -> void:
+	rect = _pixel_rect(rect)
 	var center := draw_fit_offset + rect.get_center() * draw_fit_scale
 	draw_set_transform(center, angle, Vector2(draw_fit_scale, draw_fit_scale))
 	draw_texture_rect_region(TEX_ATLAS, Rect2(-rect.size * 0.5, rect.size), source, color)
 	draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
 
 func _draw_button_region(source: Rect2, rect: Rect2, color: Color) -> void:
+	rect = _pixel_rect(rect)
 	draw_texture_rect_region(TEX_BUTTON_ATLAS, rect, source, color)
 
 func _draw_texture_region_contain(texture: Texture2D, source: Rect2, rect: Rect2, angle: float, color: Color) -> void:
@@ -1200,7 +1203,7 @@ func _draw_texture_region_contain(texture: Texture2D, source: Rect2, rect: Rect2
 		target_size.x = target_size.y * source_ratio
 	else:
 		target_size.y = target_size.x / source_ratio
-	var target := Rect2(rect.get_center() - target_size * 0.5, target_size)
+	var target := _pixel_rect(Rect2(rect.get_center() - target_size * 0.5, target_size))
 	if absf(angle) > 0.0001:
 		var center := draw_fit_offset + target.get_center() * draw_fit_scale
 		draw_set_transform(center, angle, Vector2(draw_fit_scale, draw_fit_scale))
@@ -1223,7 +1226,7 @@ func _draw_texture_region_cover(texture: Texture2D, source: Rect2, rect: Rect2, 
 		var crop_w := source.size.y * target_ratio
 		cropped.position.x += (source.size.x - crop_w) * 0.5
 		cropped.size.x = crop_w
-	draw_texture_rect_region(texture, rect, cropped, color)
+	draw_texture_rect_region(texture, _pixel_rect(rect), cropped, color)
 
 func _draw_texture_region_pivoted(texture: Texture2D, source: Rect2, pivot_in_texture: Vector2, pivot_target: Vector2, scale: float, angle: float, color: Color) -> void:
 	if texture == null:
@@ -1231,10 +1234,16 @@ func _draw_texture_region_pivoted(texture: Texture2D, source: Rect2, pivot_in_te
 	var source_pivot := pivot_in_texture - source.position
 	var top_left := -source_pivot * scale
 	var draw_rect := Rect2(top_left, source.size * scale)
-	var center := draw_fit_offset + pivot_target * draw_fit_scale
+	var center := draw_fit_offset + _pixel_vec(pivot_target) * draw_fit_scale
 	draw_set_transform(center, angle, Vector2(draw_fit_scale, draw_fit_scale))
-	draw_texture_rect_region(texture, draw_rect, source, color)
+	draw_texture_rect_region(texture, _pixel_rect(draw_rect), source, color)
 	draw_set_transform(draw_fit_offset, 0.0, Vector2(draw_fit_scale, draw_fit_scale))
+
+func _pixel_vec(value: Vector2) -> Vector2:
+	return Vector2(roundf(value.x), roundf(value.y))
+
+func _pixel_rect(value: Rect2) -> Rect2:
+	return Rect2(roundf(value.position.x), roundf(value.position.y), roundf(value.size.x), roundf(value.size.y))
 
 func _draw_title_image(center: Vector2, width: float) -> void:
 	if tex_pixel_title == null:
@@ -1257,18 +1266,18 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 			var trail_center := pos + Vector2(-18.0 + float(i) * 18.0 + offset, back * 25.0)
 			var rect := Rect2(trail_center.x - 12.0, trail_center.y - 16.0, 24.0, 32.0)
 			if tex_fx_rapid:
-				draw_texture_rect(tex_fx_rapid, rect, false, Color(1, 1, 1, 0.65), false)
+				draw_texture_rect(tex_fx_rapid, _pixel_rect(rect), false, Color(1, 1, 1, 0.65), false)
 	if split_time > 0.0:
 		var ghost_alpha := 0.22 + 0.06 * sin(phase * 1.4)
 		if tex_fx_split:
-			draw_texture_rect(tex_fx_split, Rect2(pos.x - 41.0, pos.y - 16.0, 58.0, 32.0), false, Color(1, 1, 1, ghost_alpha), false)
-			draw_texture_rect(tex_fx_split, Rect2(pos.x - 17.0, pos.y - 16.0, 58.0, 32.0), false, Color(1, 1, 1, ghost_alpha), false)
+			draw_texture_rect(tex_fx_split, _pixel_rect(Rect2(pos.x - 32.0, pos.y - 16.0, 64.0, 32.0)), false, Color(1, 1, 1, ghost_alpha), false)
+			draw_texture_rect(tex_fx_split, _pixel_rect(Rect2(pos.x - 8.0, pos.y - 16.0, 64.0, 32.0)), false, Color(1, 1, 1, ghost_alpha), false)
 		var split_start := 205.0 if is_local else 25.0
 		var split_end := 335.0 if is_local else 155.0
 		draw_arc(pos, 35.0, deg_to_rad(split_start), deg_to_rad(split_end), 24, Color(0.68, 0.36, 1.0, 0.56), 2.0)
 	if shield_time > 0.0:
 		if tex_fx_shield:
-			draw_texture_rect(tex_fx_shield, Rect2(pos.x - 41.0, pos.y - 41.0, 82.0, 82.0), false, Color(1, 1, 1, 0.72), false)
+			draw_texture_rect(tex_fx_shield, _pixel_rect(Rect2(pos.x - 32.0, pos.y - 32.0, 64.0, 64.0)), false, Color(1, 1, 1, 0.72), false)
 		var spin := phase if is_local else -phase
 		draw_arc(pos, 43.0, spin, spin + TAU * 0.72, 32, Color(0.24, 1.0, 0.56, 0.68), 3.0)
 		draw_arc(pos, 47.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 24, Color(0.76, 1.0, 0.86, 0.42), 2.0)
@@ -1359,14 +1368,14 @@ func _draw_action_stack_icons(action: String, stack: int, center: Vector2, highl
 
 func _stack_icon_size(count: int) -> float:
 	if count <= 1:
-		return 24.0
+		return 36.0
 	if count == 2:
-		return 16.0
+		return 18.0
 	if count == 3:
-		return 14.0
+		return 12.0
 	if count == 4:
-		return 13.0
-	return 10.0
+		return 12.0
+	return 9.0
 
 func _stack_points(count: int) -> Array[Vector2]:
 	if count <= 1:
@@ -1432,7 +1441,7 @@ func _lobby_join_rect() -> Rect2:
 	return Rect2(58.0, 350.0, WORLD_W - 116.0, 36.0)
 
 func _fire_button_rect() -> Rect2:
-	return Rect2(9.0, WORLD_H * 0.5 - 37.0, 74.0, 74.0)
+	return Rect2(8.0, WORLD_H * 0.5 - 44.0, 88.0, 88.0)
 
 func _action_at_pos(pos: Vector2) -> String:
 	var delta := pos - _fire_button_rect().get_center()
