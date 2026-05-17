@@ -1275,9 +1275,10 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 
 func _fit_transform() -> Dictionary:
 	var screen: Vector2 = get_viewport_rect().size
-	var scale: float = minf(screen.x / WORLD_W, screen.y / WORLD_H)
+	var raw_scale: float = minf(screen.x / WORLD_W, screen.y / WORLD_H)
+	var scale: float = maxf(1.0, floorf(raw_scale))
 	var size: Vector2 = WORLD_SIZE * scale
-	var offset: Vector2 = (screen - size) * 0.5
+	var offset: Vector2 = ((screen - size) * 0.5).round()
 	return {"scale": scale, "offset": offset}
 
 func _screen_to_virtual(screen_pos: Vector2) -> Vector2:
