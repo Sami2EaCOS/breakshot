@@ -12,7 +12,7 @@ html = html.replace(
 );
 
 html = html.replace(
-  /html, body, #canvas \{[\s\S]*?#canvas \{\s*display: block;\s*\}/,
+  /html, body(?:, #canvas)? \{[\s\S]*?#canvas \{[\s\S]*?\}/,
   `html, body {
 \tmargin: 0;
 \tpadding: 0;
@@ -29,8 +29,8 @@ body {
 
 #canvas {
 \tdisplay: block;
-\twidth: 720px !important;
-\theight: 1280px !important;
+\twidth: min(720px, 100vw, 56.25vh) !important;
+\theight: min(1280px, 177.7778vw, 100vh) !important;
 \timage-rendering: pixelated;
 \timage-rendering: crisp-edges;
 }`
