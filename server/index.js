@@ -473,7 +473,7 @@ function handleMessage(ws, raw) {
   if (data.type === 'input') {
     player.move = clamp(Number(data.move || 0), -1, 1);
     const tx = data.targetX;
-    player.targetX = typeof tx === 'number' && Number.isFinite(tx) ? clamp(tx, 45, W - 45) : null;
+    player.targetX = typeof tx === 'number' && Number.isFinite(tx) ? clamp(tx, 23, W - 23) : null;
     const fireDown = Boolean(data.fire);
     player.firePressed = player.firePressed || (fireDown && !player.fireDown);
     if (fireDown && !player.fireDown) player.holdRepeatAt = room.time + HOLD_FIRE_INTERVAL;
@@ -626,7 +626,7 @@ function updateBotInput(room, dt) {
 
   const lead = clamp(targetBall.vx * 0.22, -150, 150);
   const wobble = Math.sin(room.time * 1.7 + player.role * 2.1) * 24;
-  const targetX = clamp(targetBall.x + lead + wobble, 58, W - 58);
+  const targetX = clamp(targetBall.x + lead + wobble, 29, W - 29);
   player.move = clamp((targetX - player.x) / 120, -1, 1);
 
   if (room.time >= player.aiDecisionAt) {
@@ -666,7 +666,7 @@ function updatePlayers(room, dt) {
     } else if (player.move !== 0) {
       player.x += player.move * room.rules.player.speed * dt;
     }
-    player.x = clamp(player.x, 58, W - 58);
+    player.x = clamp(player.x, 29, W - 29);
     player.y = PLAYER_Y[player.role];
     if (player.firePressed) {
       fireActive(room, player);
@@ -735,16 +735,16 @@ function updateBall(room, ball, dt) {
   if (ball.x - ball.r < 16) {
     ball.x = 16 + ball.r;
     ball.vx = Math.abs(ball.vx);
-  } else if (ball.x + ball.r > W - 16) {
-    ball.x = W - 16 - ball.r;
+  } else if (ball.x + ball.r > W - 8) {
+    ball.x = W - 8 - ball.r;
     ball.vx = -Math.abs(ball.vx);
   }
 
   if (ball.y - ball.r < 16) {
     ball.y = 16 + ball.r;
     ball.vy = Math.abs(ball.vy);
-  } else if (ball.y + ball.r > H - 16) {
-    ball.y = H - 16 - ball.r;
+  } else if (ball.y + ball.r > H - 8) {
+    ball.y = H - 8 - ball.r;
     ball.vy = -Math.abs(ball.vy);
   }
 
@@ -769,8 +769,8 @@ function updateBall(room, ball, dt) {
 }
 
 function clampBallToArena(ball) {
-  ball.x = clamp(ball.x, 16 + ball.r, W - 16 - ball.r);
-  ball.y = clamp(ball.y, 16 + ball.r, H - 16 - ball.r);
+  ball.x = clamp(ball.x, 8 + ball.r, W - 8 - ball.r);
+  ball.y = clamp(ball.y, 8 + ball.r, H - 8 - ball.r);
 }
 
 function resolveBallCollision(room, a, b) {
@@ -823,7 +823,7 @@ function updateProjectiles(room, dt) {
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
     projectile.ttl -= dt;
-    let alive = projectile.ttl > 0 && projectile.x > -40 && projectile.x < W + 40 && projectile.y > -60 && projectile.y < H + 60;
+    let alive = projectile.ttl > 0 && projectile.x > -20 && projectile.x < W + 20 && projectile.y > -30 && projectile.y < H + 30;
 
     if (alive) {
       for (const ball of room.balls) {
@@ -878,7 +878,7 @@ function updatePowerups(room, dt) {
     powerup.y += direction * room.rules.powerups.speed * dt;
     let collected = false;
     if (owner) {
-      const rect = { x: owner.x - PLAYER_W / 2 - 10, y: owner.y - PLAYER_H / 2 - 10, w: PLAYER_W + 20, h: PLAYER_H + 20 };
+      const rect = { x: owner.x - PLAYER_W / 2 - 5, y: owner.y - PLAYER_H / 2 - 5, w: PLAYER_W + 10, h: PLAYER_H + 10 };
       collected = circleRectCollides(powerup.x, powerup.y, powerup.r, rect);
       if (collected) applyPowerup(room, owner, powerup);
     }

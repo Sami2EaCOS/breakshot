@@ -12,12 +12,12 @@ extends Control
 @export var player_name: String = "Player"
 @export var auto_connect: bool = true
 
-const WORLD_W: float = 720.0
-const WORLD_H: float = 1280.0
+const WORLD_W: float = 360.0
+const WORLD_H: float = 640.0
 const WORLD_SIZE: Vector2 = Vector2(WORLD_W, WORLD_H)
 const SEND_RATE: float = 1.0 / 30.0
 const SNAPSHOT_INTERPOLATION_DELAY: float = 0.04
-const MOVE_BAR_Y: float = 1028.0
+const MOVE_BAR_Y: float = 514.0
 const WEAPON_ORDER: Array[String] = ["sniper"]
 const WEAPON_LABELS: Dictionary = {
 	"sniper": "Sniper"
@@ -74,17 +74,17 @@ const PIXEL_BALL_SLOW_SRC: Rect2 = Rect2(13, 31, 22, 22)
 const PIXEL_BALL_CORE: Vector2 = Vector2(24, 42)
 const PIXEL_BALL_FORWARD_ANGLE: float = deg_to_rad(135.0)
 const PIXEL_BALL_CORE_DIAMETER: float = 24.0
-const PIXEL_BALL_TRAIL_MIN_SPEED: float = 360.0
-const PIXEL_PLATFORM_SRC: Rect2 = Rect2(2, 27, 61, 12)
+const PIXEL_BALL_TRAIL_MIN_SPEED: float = 180.0
+const PIXEL_PLATFORM_SRC: Rect2 = Rect2(2, 27, 60, 12)
 const PIXEL_SHOT_SRC: Rect2 = Rect2(28, 10, 8, 44)
 const PIXEL_TITLE_SRC: Rect2 = Rect2(6, 47, 117, 30)
 const UI_FIRE_IDLE: Rect2 = Rect2(8, 8, 176, 176)
 const UI_FIRE_PRESSED: Rect2 = Rect2(200, 8, 176, 176)
-const UI_RING_FRAME_SIZE: float = 384.0
+const UI_RING_FRAME_SIZE: float = 192.0
 const UI_RING_FRAME_STEP: float = 400.0
 const UI_RING_START: Vector2 = Vector2(8.0, 208.0)
-const UI_WEAPON_INNER_RADIUS: float = 88.0
-const UI_WEAPON_OUTER_RADIUS: float = 184.0
+const UI_WEAPON_INNER_RADIUS: float = 44.0
+const UI_WEAPON_OUTER_RADIUS: float = 92.0
 const ROOM_CODE_HOLD_SECONDS: float = 0.55
 
 var socket := WebSocketPeer.new()
@@ -460,7 +460,7 @@ func _send_input() -> void:
 	var fire := key_fire or fire_touches.size() > 0
 	var target_value = null
 	if touch_target_x >= 0.0:
-		target_value = clampf(touch_target_x, 40.0, WORLD_W - 40.0)
+		target_value = clampf(touch_target_x, 20.0, WORLD_W - 20.0)
 
 	var payload := {
 		"type": "input",
@@ -780,12 +780,12 @@ func _pointer_down(id, pos: Vector2) -> void:
 		_send_input()
 		return
 	move_touches[id] = true
-	touch_target_x = clampf(pos.x, 40.0, WORLD_W - 40.0)
+	touch_target_x = clampf(pos.x, 20.0, WORLD_W - 20.0)
 	_send_input()
 
 func _pointer_move(id, pos: Vector2) -> void:
 	if move_touches.has(id):
-		touch_target_x = clampf(pos.x, 40.0, WORLD_W - 40.0)
+		touch_target_x = clampf(pos.x, 20.0, WORLD_W - 20.0)
 		_send_input()
 		return
 	var action := _action_at_pos(pos)
@@ -967,20 +967,20 @@ func _draw_background() -> void:
 		_draw_texture_region_cover(tex_space_bg, source, Rect2(0, 0, WORLD_W, WORLD_H), Color(1, 1, 1, 1))
 	else:
 		draw_rect(Rect2(0, 0, WORLD_W, WORLD_H), Color(0.02, 0.025, 0.045, 1.0))
-	for i in range(0, int(WORLD_H), 128):
+	for i in range(0, int(WORLD_H), 64):
 		draw_line(Vector2(0, i), Vector2(WORLD_W, i), Color(0.45, 0.85, 1.0, 0.035), 1.0)
-	for x in range(0, int(WORLD_W), 128):
+	for x in range(0, int(WORLD_W), 64):
 		draw_line(Vector2(x, 0), Vector2(x, WORLD_H), Color(0.45, 0.85, 1.0, 0.025), 1.0)
-	draw_rect(Rect2(14, 14, WORLD_W - 28, WORLD_H - 28), Color(1, 1, 1, 0.30), false, 4.0)
-	draw_line(Vector2(40, WORLD_H * 0.5), Vector2(WORLD_W - 40, WORLD_H * 0.5), Color(1, 1, 1, 0.22), 3.0)
-	draw_circle(Vector2(WORLD_W * 0.5, WORLD_H * 0.5), 72.0, Color(1, 1, 1, 0.035))
-	draw_arc(Vector2(WORLD_W * 0.5, WORLD_H * 0.5), 72.0, 0.0, TAU, 96, Color(1, 1, 1, 0.16), 3.0)
+	draw_rect(Rect2(7, 7, WORLD_W - 14, WORLD_H - 14), Color(1, 1, 1, 0.30), false, 2.0)
+	draw_line(Vector2(20, WORLD_H * 0.5), Vector2(WORLD_W - 20, WORLD_H * 0.5), Color(1, 1, 1, 0.22), 2.0)
+	draw_circle(Vector2(WORLD_W * 0.5, WORLD_H * 0.5), 36.0, Color(1, 1, 1, 0.035))
+	draw_arc(Vector2(WORLD_W * 0.5, WORLD_H * 0.5), 36.0, 0.0, TAU, 48, Color(1, 1, 1, 0.16), 2.0)
 
 func _draw_lobby_menu() -> void:
 	var panel := _lobby_panel_rect()
 	draw_rect(panel, Color(0.025, 0.035, 0.05, 0.92), true)
 	draw_rect(panel, Color(0.55, 0.82, 1.0, 0.24), false, 2.0)
-	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 70.0), 300.0)
+	_draw_title_image(Vector2(WORLD_W * 0.5, panel.position.y + 35.0), 150.0)
 	_draw_menu_button(_lobby_create_rect(), "CREER UNE ROOM", Color(0.06, 0.42, 0.62, 0.92), true)
 	_draw_menu_button(_lobby_quick_rect(), "QUICK MATCH", Color(0.10, 0.34, 0.22, 0.92), true)
 	_draw_menu_button(_lobby_bot_rect(), "SOLO BOT", Color(0.34, 0.24, 0.08, 0.92), true)
@@ -993,13 +993,13 @@ func _draw_lobby_menu() -> void:
 func _draw_menu_button(rect: Rect2, text: String, fill: Color, strong: bool) -> void:
 	draw_rect(rect, fill, true)
 	draw_rect(rect, Color(0.75, 0.95, 1.0, 0.42 if strong else 0.26), false, 2.0)
-	_draw_centered_text(text, rect.get_center() + Vector2(0, 8), 22 if strong else 18, Color(1, 1, 1, 0.96))
+	_draw_centered_text(text, rect.get_center() + Vector2(0, 4), 11 if strong else 9, Color(1, 1, 1, 0.96))
 
 func _draw_waiting_screen() -> void:
 	var font := ui_font
-	_draw_title_image(Vector2(WORLD_W * 0.5, 315), 320.0)
-	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 372), 22, Color(0.75, 0.85, 1.0, 1))
-	var box := Rect2(70, 465, WORLD_W - 140, 300)
+	_draw_title_image(Vector2(WORLD_W * 0.5, 158), 160.0)
+	_draw_centered_text("Pong + casse-briques + tirs", Vector2(WORLD_W * 0.5, 186), 11, Color(0.75, 0.85, 1.0, 1))
+	var box := Rect2(35, 233, WORLD_W - 70, 150)
 	draw_rect(box, Color(0, 0, 0, 0.34), true)
 	draw_rect(box, Color(1, 1, 1, 0.18), false, 2.0)
 	var room_line := "Code room: %s" % room_code if room_code != "" else "Code room en creation..."
@@ -1013,10 +1013,10 @@ func _draw_waiting_screen() -> void:
 		"Mobile: glisse pour viser, bouton TIR pour shooter.",
 		"Clavier: A/D ou flèches, Espace, touches 1-3."
 	]
-	var y := box.position.y + 48.0
+	var y := box.position.y + 24.0
 	for line in lines:
-		draw_string(font, Vector2(box.position.x + 26, y), line, HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 52, 21, Color(0.93, 0.96, 1.0, 1))
-		y += 38.0
+		draw_string(font, Vector2(box.position.x + 13, y), line, HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 26, 11, Color(0.93, 0.96, 1.0, 1))
+		y += 19.0
 
 func _draw_bricks() -> void:
 	var bricks: Array = visual_state.get("bricks", [])
@@ -1034,7 +1034,7 @@ func _draw_bricks() -> void:
 		if protected:
 			var shield_src := ATLAS_SHIELD_SEGMENT_BLUE if is_local else ATLAS_SHIELD_SEGMENT_RED
 			_draw_atlas_region(shield_src, rect.grow(2), not is_local, Color(1, 1, 1, 0.9))
-			draw_rect(rect.grow(3), Color(0.45, 0.76, 1.0, 0.55), false, 3.0)
+			draw_rect(rect.grow(2), Color(0.45, 0.76, 1.0, 0.55), false, 2.0)
 
 func _draw_powerups() -> void:
 	var powerups: Array = visual_state.get("powerups", [])
@@ -1050,11 +1050,11 @@ func _draw_powerups() -> void:
 			source = _action_icon_source("rapid")
 		elif ptype == "split":
 			source = _action_icon_source("split")
-		var rect := Rect2(pos.x - 26.0, pos.y - 26.0, 52.0, 52.0)
+		var rect := Rect2(pos.x - 13.0, pos.y - 13.0, 26.0, 26.0)
 		_draw_atlas_region(source, rect, false, Color(1, 1, 1, 0.95))
 		var owner := int(power.get("owner", -1))
 		if owner == my_role:
-			draw_arc(pos, 33, 0, TAU, 40, Color(1, 1, 1, 0.45), 2)
+			draw_arc(pos, 17, 0, TAU, 24, Color(1, 1, 1, 0.45), 1)
 
 func _draw_projectiles() -> void:
 	var projectiles: Array = visual_state.get("projectiles", [])
@@ -1066,7 +1066,7 @@ func _draw_projectiles() -> void:
 		var owner := int(proj.get("owner", -1))
 		var is_local := owner == my_role
 		var shot_texture := tex_pixel_shot_blue if is_local else tex_pixel_shot_red
-		var rect := Rect2(pos.x - 7.0, pos.y - 38.5, 14.0, 77.0)
+		var rect := Rect2(pos.x - 4.0, pos.y - 22.0, 8.0, 44.0)
 		var vx := float(proj.get("vx", 0.0))
 		var vy := float(proj.get("vy", -1.0 if is_local else 1.0))
 		var angle := atan2(vy, vx) + PI * 0.5
@@ -1112,14 +1112,14 @@ func _draw_players() -> void:
 		var ship_src := ATLAS_SHIP_BLUE if is_local else ATLAS_SHIP_RED
 		var rotate_180 := not is_local
 		_draw_player_bonus_effects(player, pos, is_local)
-		_draw_atlas_region(ship_src, Rect2(pos.x - 46.0, pos.y - 37.0, 92.0, 74.0), rotate_180, Color(1, 1, 1, 0.98))
+		_draw_atlas_region(ship_src, Rect2(pos.x - 23.0, pos.y - 19.0, 46.0, 38.0), rotate_180, Color(1, 1, 1, 0.98))
 		if bool(player.get("protected", false)):
 			var bubble_src := ATLAS_SHIELD_BUBBLE_BLUE if is_local else ATLAS_SHIELD_BUBBLE_RED
-			_draw_atlas_region(bubble_src, Rect2(pos.x - 76.0, pos.y - 76.0, 152.0, 152.0), false, Color(1, 1, 1, 0.7))
+			_draw_atlas_region(bubble_src, Rect2(pos.x - 38.0, pos.y - 38.0, 76.0, 76.0), false, Color(1, 1, 1, 0.7))
 		if is_local and touch_target_x >= 0.0:
 			var target := Vector2(touch_target_x, pos.y)
-			draw_line(Vector2(touch_target_x, pos.y - 70.0), Vector2(touch_target_x, pos.y + 70.0), Color(1, 1, 1, 0.20), 2.0)
-			draw_circle(target, 8.0, Color(1, 1, 1, 0.35))
+			draw_line(Vector2(touch_target_x, pos.y - 35.0), Vector2(touch_target_x, pos.y + 35.0), Color(1, 1, 1, 0.20), 1.0)
+			draw_circle(target, 4.0, Color(1, 1, 1, 0.35))
 
 func _draw_hud() -> void:
 	var player := _local_player()
@@ -1142,7 +1142,7 @@ func _draw_hud() -> void:
 		_draw_button_region(button_src, ring_rect, Color(1, 1, 1, 0.98 if is_ready else 0.72))
 		if active_time > 0.0 and active_total > 0.0:
 			var active_pct := clampf(active_time / active_total, 0.0, 1.0)
-			_draw_weapon_arc(i, UI_WEAPON_INNER_RADIUS + 10.0, active_pct, Color(0.35, 0.72, 1.0, 0.75), 7.0)
+			_draw_weapon_arc(i, UI_WEAPON_INNER_RADIUS + 5.0, active_pct, Color(0.35, 0.72, 1.0, 0.75), 4.0)
 		var label_pos := _weapon_segment_label_pos(i)
 		_draw_action_stack_icons(action, stack, label_pos, is_ready or active_time > 0.0)
 
@@ -1150,10 +1150,10 @@ func _draw_hud() -> void:
 	var firing := fire_touches.size() > 0 or Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER)
 	var fire_src := UI_FIRE_PRESSED if firing else UI_FIRE_IDLE
 	_draw_button_region(fire_src, fire_rect, Color(1, 1, 1, 0.9))
-	_draw_centered_text("TIR", fire_rect.get_center() + Vector2(0, 9), 26, Color(1, 1, 1, 1))
+	_draw_centered_text("TIR", fire_rect.get_center() + Vector2(0, 5), 13, Color(1, 1, 1, 1))
 	if cooldown > 0.0:
 		var pct := clampf(cooldown / maxf(cooldown_max, 0.01), 0.0, 1.0)
-		draw_arc(fire_rect.get_center(), fire_rect.size.x * 0.5 + 9, -PI * 0.5, -PI * 0.5 + TAU * pct, 64, Color(1.0, 0.93, 0.28, 0.9), 6.0)
+		draw_arc(fire_rect.get_center(), fire_rect.size.x * 0.5 + 5, -PI * 0.5, -PI * 0.5 + TAU * pct, 32, Color(1.0, 0.93, 0.28, 0.9), 3.0)
 	var sniper_max := _weapon_ammo_max(active)
 	var sniper_reserve := int(reserves.get(active, ammo))
 	var sniper_reload := float(reloads.get(active, 0.0))
@@ -1161,19 +1161,19 @@ func _draw_hud() -> void:
 
 func _draw_move_limit_bar() -> void:
 	draw_rect(Rect2(0, MOVE_BAR_Y, WORLD_W, WORLD_H - MOVE_BAR_Y), Color(0.06, 0.10, 0.13, 0.16), true)
-	draw_line(Vector2(36.0, MOVE_BAR_Y), Vector2(WORLD_W - 36.0, MOVE_BAR_Y), Color(0.72, 0.92, 1.0, 0.72), 5.0)
-	draw_line(Vector2(36.0, MOVE_BAR_Y + 9.0), Vector2(WORLD_W - 36.0, MOVE_BAR_Y + 9.0), Color(0.14, 0.24, 0.32, 0.66), 2.0)
-	draw_circle(Vector2(36.0, MOVE_BAR_Y), 8.0, Color(0.72, 0.92, 1.0, 0.72))
-	draw_circle(Vector2(WORLD_W - 36.0, MOVE_BAR_Y), 8.0, Color(0.72, 0.92, 1.0, 0.72))
+	draw_line(Vector2(18.0, MOVE_BAR_Y), Vector2(WORLD_W - 18.0, MOVE_BAR_Y), Color(0.72, 0.92, 1.0, 0.72), 3.0)
+	draw_line(Vector2(18.0, MOVE_BAR_Y + 5.0), Vector2(WORLD_W - 18.0, MOVE_BAR_Y + 5.0), Color(0.14, 0.24, 0.32, 0.66), 1.0)
+	draw_circle(Vector2(18.0, MOVE_BAR_Y), 4.0, Color(0.72, 0.92, 1.0, 0.72))
+	draw_circle(Vector2(WORLD_W - 18.0, MOVE_BAR_Y), 4.0, Color(0.72, 0.92, 1.0, 0.72))
 
 func _draw_status_overlay() -> void:
 	var status := str(visual_state.get("status", "waiting"))
 	var winner := int(visual_state.get("winner", -1))
 	if status == "ended":
-		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(0, 0, 0, 0.68), true)
-		draw_rect(Rect2(60, 455, WORLD_W - 120, 180), Color(1, 1, 1, 0.24), false, 2.0)
+		draw_rect(Rect2(30, 228, WORLD_W - 60, 90), Color(0, 0, 0, 0.68), true)
+		draw_rect(Rect2(30, 228, WORLD_W - 60, 90), Color(1, 1, 1, 0.24), false, 1.0)
 		var result_text := "VICTOIRE" if winner == my_role else "DEFAITE"
-		_draw_centered_text(result_text, Vector2(WORLD_W * 0.5, 530), 48, Color(1, 1, 1, 1))
+		_draw_centered_text(result_text, Vector2(WORLD_W * 0.5, 265), 24, Color(1, 1, 1, 1))
 	return
 
 func _draw_atlas_region(source: Rect2, rect: Rect2, rotate_180: bool, color: Color) -> void:
@@ -1253,25 +1253,25 @@ func _draw_player_bonus_effects(player: Dictionary, pos: Vector2, is_local: bool
 	var phase := Time.get_ticks_msec() * 0.006
 	if rapid_time > 0.0:
 		for i in range(3):
-			var offset := sin(phase + float(i) * 1.7) * 6.0
-			var trail_center := pos + Vector2(-36.0 + float(i) * 36.0 + offset, back * 50.0)
-			var rect := Rect2(trail_center.x - 24.0, trail_center.y - 32.0, 48.0, 64.0)
+			var offset := sin(phase + float(i) * 1.7) * 3.0
+			var trail_center := pos + Vector2(-18.0 + float(i) * 18.0 + offset, back * 25.0)
+			var rect := Rect2(trail_center.x - 12.0, trail_center.y - 16.0, 24.0, 32.0)
 			if tex_fx_rapid:
 				draw_texture_rect(tex_fx_rapid, rect, false, Color(1, 1, 1, 0.65), false)
 	if split_time > 0.0:
 		var ghost_alpha := 0.22 + 0.06 * sin(phase * 1.4)
 		if tex_fx_split:
-			draw_texture_rect(tex_fx_split, Rect2(pos.x - 82.0, pos.y - 32.0, 116.0, 64.0), false, Color(1, 1, 1, ghost_alpha), false)
-			draw_texture_rect(tex_fx_split, Rect2(pos.x - 34.0, pos.y - 32.0, 116.0, 64.0), false, Color(1, 1, 1, ghost_alpha), false)
+			draw_texture_rect(tex_fx_split, Rect2(pos.x - 41.0, pos.y - 16.0, 58.0, 32.0), false, Color(1, 1, 1, ghost_alpha), false)
+			draw_texture_rect(tex_fx_split, Rect2(pos.x - 17.0, pos.y - 16.0, 58.0, 32.0), false, Color(1, 1, 1, ghost_alpha), false)
 		var split_start := 205.0 if is_local else 25.0
 		var split_end := 335.0 if is_local else 155.0
-		draw_arc(pos, 70.0, deg_to_rad(split_start), deg_to_rad(split_end), 32, Color(0.68, 0.36, 1.0, 0.56), 4.0)
+		draw_arc(pos, 35.0, deg_to_rad(split_start), deg_to_rad(split_end), 24, Color(0.68, 0.36, 1.0, 0.56), 2.0)
 	if shield_time > 0.0:
 		if tex_fx_shield:
-			draw_texture_rect(tex_fx_shield, Rect2(pos.x - 82.0, pos.y - 82.0, 164.0, 164.0), false, Color(1, 1, 1, 0.72), false)
+			draw_texture_rect(tex_fx_shield, Rect2(pos.x - 41.0, pos.y - 41.0, 82.0, 82.0), false, Color(1, 1, 1, 0.72), false)
 		var spin := phase if is_local else -phase
-		draw_arc(pos, 86.0, spin, spin + TAU * 0.72, 48, Color(0.24, 1.0, 0.56, 0.68), 5.0)
-		draw_arc(pos, 94.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 36, Color(0.76, 1.0, 0.86, 0.42), 3.0)
+		draw_arc(pos, 43.0, spin, spin + TAU * 0.72, 32, Color(0.24, 1.0, 0.56, 0.68), 3.0)
+		draw_arc(pos, 47.0, -spin * 0.7, -spin * 0.7 + TAU * 0.42, 24, Color(0.76, 1.0, 0.86, 0.42), 2.0)
 
 func _fit_transform() -> Dictionary:
 	return {"scale": 1.0, "offset": Vector2.ZERO}
@@ -1319,7 +1319,7 @@ func _weapon_angle_center(index: int) -> float:
 
 func _weapon_segment_label_pos(index: int) -> Vector2:
 	var angle := deg_to_rad(_weapon_angle_center(index))
-	return _fire_button_rect().get_center() + Vector2(cos(angle), sin(angle)) * 138.0
+	return _fire_button_rect().get_center() + Vector2(cos(angle), sin(angle)) * 69.0
 
 func _draw_weapon_arc(index: int, radius: float, pct: float, color: Color, width: float) -> void:
 	if pct <= 0.0:
@@ -1359,40 +1359,40 @@ func _draw_action_stack_icons(action: String, stack: int, center: Vector2, highl
 
 func _stack_icon_size(count: int) -> float:
 	if count <= 1:
-		return 48.0
+		return 24.0
 	if count == 2:
-		return 32.0
+		return 16.0
 	if count == 3:
-		return 27.0
+		return 14.0
 	if count == 4:
-		return 25.0
-	return 20.0
+		return 13.0
+	return 10.0
 
 func _stack_points(count: int) -> Array[Vector2]:
 	if count <= 1:
 		return [Vector2.ZERO]
 	if count == 2:
-		return [Vector2(-8, 0), Vector2(8, 0)]
+		return [Vector2(-4, 0), Vector2(4, 0)]
 	if count == 3:
-		return [Vector2(0, -8), Vector2(-9, 7), Vector2(9, 7)]
+		return [Vector2(0, -4), Vector2(-5, 4), Vector2(5, 4)]
 	if count == 4:
-		return [Vector2(-8, -8), Vector2(8, -8), Vector2(-8, 8), Vector2(8, 8)]
+		return [Vector2(-4, -4), Vector2(4, -4), Vector2(-4, 4), Vector2(4, 4)]
 	var cols: int = 3
 	var rows: int = int(ceil(float(count) / float(cols)))
 	var output: Array[Vector2] = []
 	for i in range(count):
 		var col: int = i % cols
 		var row: int = int(i / cols)
-		output.append(Vector2((float(col) - 1.0) * 12.0, (float(row) - float(rows - 1) * 0.5) * 12.0))
+		output.append(Vector2((float(col) - 1.0) * 6.0, (float(row) - float(rows - 1) * 0.5) * 6.0))
 	return output
 
 func _draw_ammo_bar(fire_rect: Rect2, reserve: int, max_ammo: int, reload_remaining: float, reload_total: float) -> void:
 	var cells: int = maxi(1, max_ammo)
-	var bar_h: float = 214.0
-	var bar: Rect2 = Rect2(WORLD_W - 70.0, WORLD_H * 0.5 - bar_h * 0.5, 30.0, bar_h)
-	draw_rect(bar.grow(4.0), Color(0.0, 0.0, 0.0, 0.42), true)
-	draw_rect(bar.grow(4.0), Color(1, 1, 1, 0.18), false, 2.0)
-	var gap: float = 4.0
+	var bar_h: float = 107.0
+	var bar: Rect2 = Rect2(WORLD_W - 35.0, WORLD_H * 0.5 - bar_h * 0.5, 15.0, bar_h)
+	draw_rect(bar.grow(2.0), Color(0.0, 0.0, 0.0, 0.42), true)
+	draw_rect(bar.grow(2.0), Color(1, 1, 1, 0.18), false, 1.0)
+	var gap: float = 2.0
 	var cell_h: float = (bar.size.y - gap * float(cells - 1)) / float(cells)
 	var reload_pct: float = 0.0
 	if reload_remaining > 0.0:
@@ -1404,35 +1404,35 @@ func _draw_ammo_bar(fire_rect: Rect2, reserve: int, max_ammo: int, reload_remain
 		draw_rect(rect, Color(0.04, 0.07, 0.09, 0.74), true)
 		draw_rect(rect, Color(1, 1, 1, 0.22), false, 1.0)
 		if i < reserve:
-			draw_rect(rect.grow(-3.0), Color(0.30, 0.80, 1.0, 0.94), true)
+			draw_rect(rect.grow(-2.0), Color(0.30, 0.80, 1.0, 0.94), true)
 		elif i == reserve and reserve < cells and reload_pct > 0.0:
-			var fill_h: float = maxf(0.0, (rect.size.y - 6.0) * reload_pct)
-			var fill: Rect2 = Rect2(rect.position.x + 3.0, rect.position.y + rect.size.y - 3.0 - fill_h, rect.size.x - 6.0, fill_h)
+			var fill_h: float = maxf(0.0, (rect.size.y - 4.0) * reload_pct)
+			var fill: Rect2 = Rect2(rect.position.x + 2.0, rect.position.y + rect.size.y - 2.0 - fill_h, rect.size.x - 4.0, fill_h)
 			draw_rect(fill, Color(0.30, 0.80, 1.0, 0.72), true)
 
 func _lobby_panel_rect() -> Rect2:
-	return Rect2(64.0, 180.0, WORLD_W - 128.0, 820.0)
+	return Rect2(32.0, 90.0, WORLD_W - 64.0, 410.0)
 
 func _lobby_create_rect() -> Rect2:
-	return Rect2(116.0, 338.0, WORLD_W - 232.0, 72.0)
+	return Rect2(58.0, 169.0, WORLD_W - 116.0, 36.0)
 
 func _lobby_quick_rect() -> Rect2:
-	return Rect2(116.0, 426.0, WORLD_W - 232.0, 72.0)
+	return Rect2(58.0, 213.0, WORLD_W - 116.0, 36.0)
 
 func _lobby_bot_rect() -> Rect2:
-	return Rect2(116.0, 514.0, WORLD_W - 232.0, 72.0)
+	return Rect2(58.0, 257.0, WORLD_W - 116.0, 36.0)
 
 func _lobby_join_input_rect() -> Rect2:
-	return Rect2(116.0, 620.0, WORLD_W - 368.0, 66.0)
+	return Rect2(58.0, 310.0, WORLD_W - 184.0, 33.0)
 
 func _lobby_join_paste_rect() -> Rect2:
-	return Rect2(WORLD_W - 240.0, 620.0, 124.0, 66.0)
+	return Rect2(WORLD_W - 120.0, 310.0, 62.0, 33.0)
 
 func _lobby_join_rect() -> Rect2:
-	return Rect2(116.0, 700.0, WORLD_W - 232.0, 72.0)
+	return Rect2(58.0, 350.0, WORLD_W - 116.0, 36.0)
 
 func _fire_button_rect() -> Rect2:
-	return Rect2(18.0, WORLD_H * 0.5 - 74.0, 148.0, 148.0)
+	return Rect2(9.0, WORLD_H * 0.5 - 37.0, 74.0, 74.0)
 
 func _action_at_pos(pos: Vector2) -> String:
 	var delta := pos - _fire_button_rect().get_center()

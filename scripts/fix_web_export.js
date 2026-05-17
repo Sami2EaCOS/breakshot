@@ -36,8 +36,8 @@ body {
 }`
 );
 
-html = html.replace(/<canvas id="canvas"(?: width="\d+" height="\d+")?>/, '<canvas id="canvas" width="720" height="1280">');
+html = html.replace(/<canvas id="canvas"(?: width="\d+" height="\d+")?>/, '<canvas id="canvas" width="360" height="640">');
 html = html.replace(/"canvasResizePolicy":\d+/, '"canvasResizePolicy":0');
-html = html.replace(/\s*<script>\s*\(function \(\) \{\s*const BASE_W = 720;[\s\S]*?resizeFixedCanvas\(\);\s*\}\(\)\);\s*<\/script>/, '');
+html = html.replace(/\s*<script>\s*\(function \(\) \{\s*const BASE_W = (?:360|720);[\s\S]*?resizeFixedCanvas\(\);\s*\}\(\)\);\s*<\/script>/, '');
 
 fs.writeFileSync(htmlPath, html);

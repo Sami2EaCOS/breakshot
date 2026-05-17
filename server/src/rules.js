@@ -1,36 +1,36 @@
 'use strict';
 
-const W = 720;
-const H = 1280;
+const W = 360;
+const H = 640;
 const TICK_RATE = 60;
 const SNAPSHOT_RATE = 60;
 const DT = 1 / TICK_RATE;
 const ROOM_COUNTDOWN_SECONDS = 4.0;
 
-const PLAYER_SPEED = 760;
-const PLAYER_W = 118;
-const PLAYER_H = 34;
-const PLAYER_Y = [1164, 139];
-const BALL_R = 17;
+const PLAYER_SPEED = 380;
+const PLAYER_W = 59;
+const PLAYER_H = 17;
+const PLAYER_Y = [582, 70];
+const BALL_R = 12;
 const BALL_MIN_SPEED = 0;
-const BALL_MAX_SPEED = 920;
+const BALL_MAX_SPEED = 460;
 const POWERUP_CHANCE = 0.36;
-const POWERUP_SPEED = 165;
+const POWERUP_SPEED = 83;
 const HOLD_FIRE_INTERVAL = 0.22;
 
 const BRICK_COLS = 7;
 const BRICK_ROWS = 4;
-const BRICK_W = 61;
-const BRICK_H = 12;
-const BRICK_GAP = 11;
+const BRICK_W = 30;
+const BRICK_H = 6;
+const BRICK_GAP = 6;
 const BRICK_X0 = (W - (BRICK_COLS * BRICK_W + (BRICK_COLS - 1) * BRICK_GAP)) / 2;
 const WALL_Y = {
-  1: 228,
-  0: 930
+  1: 114,
+  0: 465
 };
 
 const WEAPONS = {
-  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 2240, radius: 9, impact: 0.575, semi: false }
+  sniper: { label: 'Sniper', ammo: 5, cooldown: 0, reload: 0.8, speed: 1120, radius: 5, impact: 0.575, semi: false }
 };
 const WEAPON_ORDER = Object.keys(WEAPONS);
 const POWER_KINDS = ['shield', 'rapid', 'split'];
@@ -77,8 +77,8 @@ function cloneDefaultRules() {
       radius: BALL_R,
       minSpeed: BALL_MIN_SPEED,
       maxSpeed: BALL_MAX_SPEED,
-      serveSpeedMin: 440,
-      serveSpeedMax: 540
+      serveSpeedMin: 220,
+      serveSpeedMax: 270
     },
     powerups: {
       chance: POWERUP_CHANCE,
@@ -101,16 +101,16 @@ function sanitizeRules(input = {}) {
   const powerups = objectOrEmpty(decodedInput.powerups);
   const weapons = objectOrEmpty(decodedInput.weapons);
 
-  rules.player.speed = cleanNumber(player.speed, defaults.player.speed, 180, 1800);
+  rules.player.speed = cleanNumber(player.speed, defaults.player.speed, 90, 900);
 
-  rules.ball.radius = cleanNumber(ball.radius, defaults.ball.radius, 5, 56);
-  rules.ball.minSpeed = cleanNumber(ball.minSpeed, defaults.ball.minSpeed, 0, 1600);
-  rules.ball.maxSpeed = cleanNumber(ball.maxSpeed, defaults.ball.maxSpeed, rules.ball.minSpeed, 2400);
+  rules.ball.radius = cleanNumber(ball.radius, defaults.ball.radius, 3, 28);
+  rules.ball.minSpeed = cleanNumber(ball.minSpeed, defaults.ball.minSpeed, 0, 800);
+  rules.ball.maxSpeed = cleanNumber(ball.maxSpeed, defaults.ball.maxSpeed, rules.ball.minSpeed, 1200);
   rules.ball.serveSpeedMin = cleanNumber(ball.serveSpeedMin, defaults.ball.serveSpeedMin, rules.ball.minSpeed, rules.ball.maxSpeed);
   rules.ball.serveSpeedMax = cleanNumber(ball.serveSpeedMax, defaults.ball.serveSpeedMax, rules.ball.serveSpeedMin, rules.ball.maxSpeed);
 
   rules.powerups.chance = cleanNumber(powerups.chance, defaults.powerups.chance, 0, 1);
-  rules.powerups.speed = cleanNumber(powerups.speed, defaults.powerups.speed, 0, 520);
+  rules.powerups.speed = cleanNumber(powerups.speed, defaults.powerups.speed, 0, 260);
   rules.powerups.shieldDuration = cleanNumber(powerups.shieldDuration, defaults.powerups.shieldDuration, 0.1, 12);
   rules.powerups.rapidDuration = cleanNumber(powerups.rapidDuration, defaults.powerups.rapidDuration, 0.1, 18);
   rules.powerups.splitDuration = cleanNumber(powerups.splitDuration, defaults.powerups.splitDuration, 0.1, 12);
@@ -124,8 +124,8 @@ function sanitizeRules(input = {}) {
     target.ammo = cleanInt(source.ammo, fallback.ammo, 0, 99);
     target.cooldown = cleanNumber(source.cooldown, fallback.cooldown, 0, 12);
     target.reload = cleanNumber(source.reload, fallback.reload, 0.05, 30);
-    if (fallback.speed !== undefined) target.speed = cleanNumber(source.speed, fallback.speed, 80, 2500);
-    if (fallback.radius !== undefined) target.radius = cleanNumber(source.radius, fallback.radius, 2, 32);
+    if (fallback.speed !== undefined) target.speed = cleanNumber(source.speed, fallback.speed, 40, 1250);
+    if (fallback.radius !== undefined) target.radius = cleanNumber(source.radius, fallback.radius, 1, 16);
     if (fallback.impact !== undefined) target.impact = cleanNumber(source.impact, fallback.impact, 0, 3);
     if (fallback.pellets !== undefined) target.pellets = cleanInt(source.pellets, fallback.pellets, 1, 16);
     if (fallback.spread !== undefined) target.spread = cleanNumber(source.spread, fallback.spread, 0, 1.2);
