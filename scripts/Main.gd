@@ -12,7 +12,7 @@ extends Control
 @export var player_name: String = "Player"
 @export var auto_connect: bool = true
 
-const WORLD_W: float = 360.0
+const WORLD_W: float = 384.0
 const WORLD_H: float = 640.0
 const WORLD_SIZE: Vector2 = Vector2(WORLD_W, WORLD_H)
 const SEND_RATE: float = 1.0 / 30.0
@@ -185,7 +185,7 @@ func _wire_editor_ui() -> void:
 	)
 
 func _load_effect_assets() -> void:
-	tex_space_bg = load("res://assets/backgrounds/space_starfield_360x640.png")
+	tex_space_bg = load("res://assets/backgrounds/space_starfield_384x640.png")
 	tex_fx_shield = load("res://assets/effects/fx_shield_ring.png")
 	tex_fx_rapid = load("res://assets/effects/fx_rapid_trail.png")
 	tex_fx_split = load("res://assets/effects/fx_split_ghost.png")

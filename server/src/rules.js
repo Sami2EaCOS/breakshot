@@ -1,6 +1,6 @@
 'use strict';
 
-const W = 360;
+const W = 384;
 const H = 640;
 const TICK_RATE = 60;
 const SNAPSHOT_RATE = 60;

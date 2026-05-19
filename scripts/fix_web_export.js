@@ -8,7 +8,7 @@ let html = fs.readFileSync(htmlPath, 'utf8');
 
 html = html.replace(
   /<meta name="viewport" content="[^"]*">/,
-  '<meta name="viewport" content="width=360, user-scalable=no, initial-scale=1.0">'
+  '<meta name="viewport" content="width=384, user-scalable=no, initial-scale=1.0">'
 );
 
 html = html.replace(
@@ -29,15 +29,15 @@ body {
 
 #canvas {
 \tdisplay: block;
-\twidth: 360px;
+\twidth: 384px;
 \theight: 640px;
 \timage-rendering: pixelated;
 \timage-rendering: crisp-edges;
 }`
 );
 
-html = html.replace(/<canvas id="canvas"(?: width="\d+" height="\d+")?>/, '<canvas id="canvas" width="360" height="640">');
+html = html.replace(/<canvas id="canvas"(?: width="\d+" height="\d+")?>/, '<canvas id="canvas" width="384" height="640">');
 html = html.replace(/"canvasResizePolicy":\d+/, '"canvasResizePolicy":0');
-html = html.replace(/\s*<script>\s*\(function \(\) \{\s*const BASE_W = (?:360|720);[\s\S]*?resizeFixedCanvas\(\);\s*\}\(\)\);\s*<\/script>/, '');
+html = html.replace(/\s*<script>\s*\(function \(\) \{\s*const BASE_W = (?:360|384|720);[\s\S]*?resizeFixedCanvas\(\);\s*\}\(\)\);\s*<\/script>/, '');
 
 fs.writeFileSync(htmlPath, html);
